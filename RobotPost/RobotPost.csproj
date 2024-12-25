@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="HardCodes\BendLS_HC.txt" />
+    <None Remove="HardCodes\BendSub_HC.txt" />
+    <None Remove="HardCodes\Header.txt" />
+    <None Remove="HardCodes\MainLS_HC.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="HardCodes\BendLS_HC.txt" />
+    <EmbeddedResource Include="HardCodes\BendSub_HC.txt" />
+    <EmbeddedResource Include="HardCodes\Header.txt" />
+    <EmbeddedResource Include="HardCodes\MainLS_HC.txt" />
+  </ItemGroup>
+
+</Project>

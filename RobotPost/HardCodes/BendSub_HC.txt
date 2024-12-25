@@ -1,0 +1,57 @@
+/ATTR
+OWNER		= MNEDITOR;
+COMMENT		= "12:00 12-04";
+PROG_SIZE	= 2991;
+CREATE		= DATE 24-11-05  TIME 14:23:52;
+MODIFIED	= DATE 24-12-04 TIME 12:00:04;
+FILE_NAME	= TESTDEF;
+VERSION		= 0;
+LINE_COUNT	= 26;
+MEMORY_SIZE	= 3391;
+PROTECT		= READ_WRITE;
+TCD:  STACK_SIZE	= 0,
+      TASK_PRIORITY	= 50,
+      TIME_SLICE	= 0,
+      BUSY_LAMP_OFF	= 0,
+      ABORT_REQUEST	= 0,
+      PAUSE_REQUEST	= 0;
+DEFAULT_GROUP	= 1,*,*,*,*;
+CONTROL_CODE	= 00000000 00000000;
+LOCAL_REGISTERS	= 0,0,0;
+/APPL
+
+LINE_TRACK;
+  LINE_TRACK_SCHEDULE_NUMBER      : 0;
+  LINE_TRACK_BOUNDARY_NUMBER      : 0;
+  CONTINUE_TRACK_AT_PROG_END      : TRUE;
+
+/MN
+  1:  !,SYNCRO_BEND ;
+   2:  UFRAME_NUM=2 ;
+   3:  UTOOL_NUM=2 ;
+   4:  R[15:SPD_J]=100    ;
+   5:  FOR R[33]=1 TO 25 ;
+   6:  PR[R[33]]=P[R[33]]    ;
+   7:  ENDFOR ;
+   8:  ;
+   9:  DO[505]=ON;
+  10:  wait 1(sec);
+  11:J P[1] R[15:SPD_J]% CNT100    ;
+  12:  wait 0.25(sec);
+  13:  DO[505]=OFF;    
+  14:  wait .25(sec);
+  15:  R[38]=0    ;
+  16:  R[35]=0    ;
+  17:  DO[2:MOVE_TO_LDP]=ON ;
+  18:  SKIP CONDITION R[35]<>R[34]    ;
+  19:  LBL[2] ;
+  20:  IF R[34]>=24,JMP LBL[3] ;
+  21:  LBL[1] ;
+  22:  R[35]=R[34]    ;
+  23:J PR[R[35]] R[15:SPD_J]% CNT100 ACC45 Skip,LBL[2]    ;
+  24:  JMP LBL[2] ;
+  25:  R[38]=R[38]+1    ;
+  26:  LBL[3] ;
+  27:J P[25] R[15:SPD_J]% CNT100    ;
+  28:  R[15:SPD_J]=20    ;
+/POS
