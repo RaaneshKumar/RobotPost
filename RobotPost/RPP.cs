@@ -47,6 +47,7 @@ public partial class RPP {
                mBends.Add (bend);
             }
             if (rbcLine.Contains ("User")) isBend = false; // Back to RPP
+            if (rbcLine.Contains ("Regrip")) bend.HasRegrip = true;
          } else if (rbcLine.StartsWith ("G01") && pattern.Match (rbcLine) is { Success: true } match) {
             string[] points = jointTags.Select (j => double.Parse (match.Groups[j].Value).ToString ("F2")).ToArray ();
             var motion = rbcLine.Contains ("Forward") ? 'J' : 'L';
@@ -143,6 +144,11 @@ public class Bend {
 
    public int Rank => mRank;
 
+   public bool HasRegrip {
+      get => mHasRegrip;
+      set => mHasRegrip = value;
+   }
+
    public List<(int pCount, string[] pos, string tag, char motion)> Positions {
       get => mPositions;
       set => mPositions = value;
@@ -164,7 +170,7 @@ public class Bend {
       StringBuilder positionsSB = new ();
       using StreamWriter bendLsSW = new ($"Bend{Rank}Positioning_Sub.LS");
       using StreamReader headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
-      using StreamReader bendLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.BendLS_HC.txt")!);
+      using StreamReader bendLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.{(HasRegrip? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}")!);
       bendLsSW.WriteLine ($"/PROG  Bend{Rank}Positioning_sub\n");
 
       for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) { // Header part of the hard code
@@ -176,12 +182,16 @@ public class Bend {
          if (hardCode == null) break;
          if (hardCode.StartsWith ('[')) {
             int pointIdx = int.Parse (hardCode.Split ('[', ']')[1]) - 1;
+            if (Rank == 1) {
+               if (pointIdx is 0 or 1) continue;
+               if (pointIdx is 2 or 3 or 4) pointIdx -= 2;
+            }
             var point = Positions[pointIdx];
             bendLsSW.WriteLine ($"  {i}: {point.motion} P[{point.pCount}:{point.tag}] {(point.motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
          } else if (hardCode.StartsWith ('*')) { // Bend sub Calls
             bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
          } else if (hardCode.StartsWith ('^')) {
-            bendLsSW.WriteLine ($"  {i}:   R[17]={Rank + 1}"); // R[17] = 2 for first bend, 3 for second bend...
+            bendLsSW.WriteLine ($"  {i}:   R[17]={Rank + 1} ;"); // R[17] = 2 for first bend, 3 for second bend...
          } else {
             bendLsSW.WriteLine ($"  {i}: {hardCode}");
          }
@@ -229,4 +239,5 @@ public class Bend {
    List<(string[] pos, char motion)> mBendSubPts;
    List<double> mRamPts;
    int mRank;
+   bool mHasRegrip;
 }
