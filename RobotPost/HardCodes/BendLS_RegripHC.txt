@@ -8,7 +8,7 @@
   UFRAME_NUM=2 ;  
 [5]
   //L P[10:Pinch Point] R[16:SPD_L]mm/sec FINE    ;  
-  PR[62]=P[9:Mute Point]    ;
+  PR[62]=LPOS    ;
   PR[60:LPOS_MUT]=LPOS    ;
    ;
   ELSE ;
@@ -33,10 +33,10 @@
   PR[73]=P[13:Over Bending]    ;
 *
   DO[505:VAC_GRIP_ON]=ON ;
-[8] 
-[9]
 [10]
 [11]
+[12]
+[13]
   DO[505:VAC_GRIP_ON]=OFF ;
   wait(.25)sec;  
 
@@ -45,9 +45,9 @@
   DO[3:MOVE_TO_UDP]=ON ;
   WAIT (DI[9:UDP_REACHED])    ;
   DO[3:MOVE_TO_UDP]=OFF ;
-[12]
-[13]
 [14]
+[15]
+[16]
   //WAIT (DI[8:EoD_REACHED])    ;
   DO[2:MOVE_TO_LDP]=OFF ;
   //UFRAME_NUM=3 ;

@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Reflection;
-using System.Reflection.Emit;
+﻿using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
 #region class RPP ------------------------------------------------------------------------------
 public partial class RPP {
+   #region Constructor --------------------------------------------
    public RPP (string path) {
       mFilePath = path;
       mFileName = Path.GetFileNameWithoutExtension (path);
@@ -15,8 +12,11 @@ public partial class RPP {
       mBends = [];
       mRbcSr = new (mFilePath);
    }
+   #endregion
 
+   #region Properties ---------------------------------------------
    public List<Bend> Bends => mBends;
+   #endregion
 
    #region Methods ------------------------------------------------
    void CollectPositions () {
@@ -31,16 +31,9 @@ public partial class RPP {
          string? rbcLine = mRbcSr.ReadLine ();
          if (rbcLine == null) break;
          if (rbcLine == "" || i < 8) { bCount = 0; continue; }
-         if (rbcLine == "Bend 0") {
-            isRamPt = true;
-            bCount++;
-            continue;
-         }
+         if (rbcLine == "Bend 0") { isRamPt = true; bCount++; continue; }
          if (rbcLine.StartsWith ('(')) {
-            if (mRbcSr.Peek () != '(') {
-               pCount++;
-               label = pCount == 1 ? "Init" : rbcLine[1..^1];
-            }
+            if (mRbcSr.Peek () != '(') label = ++pCount == 1 ? "Init" : rbcLine[1..^1];
             if (rbcLine.Contains ("Bend ") && rbcLine != "Bend 0") { // Starts collecting points in Bend object.
                bend = new (++bCount);
                isBend = true;
@@ -51,15 +44,10 @@ public partial class RPP {
          } else if (rbcLine.StartsWith ("G01") && pattern.Match (rbcLine) is { Success: true } match) {
             string[] points = jointTags.Select (j => double.Parse (match.Groups[j].Value).ToString ("F2")).ToArray ();
             var motion = rbcLine.Contains ("Forward") ? 'J' : 'L';
-
             if (isRamPt) mBends[bCount - 1].BendSubPts.Add ((points, motion)); // Collects ram points for each bend.
-            else {
-               if (isBend) bend.Positions.Add ((pCount, points, label, motion));
-               else mPositions.Add ((pCount, points, label, motion));
-            }
-         } else {
+            else (isBend ? bend.Positions : mPositions).Add ((pCount, points, label, motion));
+         } else
             if (isRamPt) mBends[bCount - 1].RamPts.Add (double.Parse (rbcLine));
-         }
       }
    }
 
@@ -70,7 +58,7 @@ public partial class RPP {
          var bend = Bends[i];
          bend.GenBendLS ();
          bend.GenBendSub ();
-         bend.GenRamPts (); 
+         bend.GenRamPts ();
       }
    }
 
@@ -82,9 +70,8 @@ public partial class RPP {
       using StreamReader mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.MainLS_HC.txt")!);
 
       mainLsSW.WriteLine ($"/PROG  {mFileName}\n");
-      for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) { // Header part of the hard code
-         mainLsSW.WriteLine (header);
-      }
+      // Header part of the hard code
+      for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) mainLsSW.WriteLine (header);
 
       for (int i = 1; ; i++) { // Remaining part of the hard code
          var hardCode = mainLsSR.ReadLine ();
@@ -93,17 +80,14 @@ public partial class RPP {
             int pointIdx = int.Parse (hardCode.Split ('[', ']')[1]) - 1;
             var point = mPositions[pointIdx];
             mainLsSW.WriteLine ($"  {i}: {point.motion} P[{point.pCount}:{point.tag}] {(point.motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
-         } else if (hardCode.StartsWith ('*')) { // Sub Bend Program Calls
-            for (int j = 1; j <= Bends.Count; j++) {
+         } else if (hardCode.StartsWith ('*')) // Sub Bend Program Calls
+            for (int j = 1; j <= Bends.Count; j++)
                mainLsSW.WriteLine ($"  {(j == 1 ? i++ : i)}:{(j == 1 ? $"  SELECT R[17]={j},CALL BEND{j}Positioning_sub ;" : $"       ={j},CALL BEND{j}Positioning_sub ;")}");
-            }
-         } else if (hardCode.StartsWith ('(')) { // Points after deposit
+         else if (hardCode.StartsWith ('(')) { // Points after deposit
             int hcIdx = int.Parse (hardCode.Split ('(', ')')[1]) - 1;
             var point = mPositions[depositIdx + hcIdx];
             mainLsSW.WriteLine ($"  {i}: {point.motion} P[{point.pCount}:{point.tag}] {(point.motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
-         } else {
-            mainLsSW.WriteLine ($"  {i}: {hardCode}");
-         }
+         } else mainLsSW.WriteLine ($"  {i}: {hardCode}");
       }
 
       for (int i = 0; i < mPositions.Count; i++) {
@@ -127,21 +111,28 @@ public partial class RPP {
    private static partial Regex MyRegex ();
    #endregion
 
+   #region Private fields -----------------------------------------
    string mFileName, mFilePath;
    List<(int pCount, string[] pos, string tag, char motion)> mPositions; // Has Pickup and Deposit positions
    List<Bend> mBends;
    StreamReader mRbcSr;
+   #endregion
 }
 #endregion
 
+#region class Bend -----------------------------------------------------------------------------
 public class Bend {
+
+   #region Constructor --------------------------------------------
    public Bend (int rank) {
       mRank = rank;
       mPositions = [];
       mBendSubPts = [];
       mRamPts = [];
    }
+   #endregion
 
+   #region Properties ---------------------------------------------
    public int Rank => mRank;
 
    public bool HasRegrip {
@@ -163,14 +154,14 @@ public class Bend {
       get => mRamPts;
       set => mRamPts = value;
    }
+   #endregion
 
-   // Things to clarify
-   // 1. P[17: User1] is not in point collection
+   #region Public methods -----------------------------------------
    public void GenBendLS () {
       StringBuilder positionsSB = new ();
       using StreamWriter bendLsSW = new ($"Bend{Rank}Positioning_Sub.LS");
       using StreamReader headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
-      using StreamReader bendLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.{(HasRegrip? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}")!);
+      using StreamReader bendLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.{(HasRegrip ? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}")!);
       bendLsSW.WriteLine ($"/PROG  Bend{Rank}Positioning_sub\n");
 
       for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) { // Header part of the hard code
@@ -184,7 +175,7 @@ public class Bend {
             int pointIdx = int.Parse (hardCode.Split ('[', ']')[1]) - 1;
             if (Rank == 1) {
                if (pointIdx is 0 or 1) continue;
-               if (pointIdx is 2 or 3 or 4) pointIdx -= 2;
+               else pointIdx -= 2;
             }
             var point = Positions[pointIdx];
             bendLsSW.WriteLine ($"  {i}: {point.motion} P[{point.pCount}:{point.tag}] {(point.motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
@@ -210,10 +201,8 @@ public class Bend {
       using StreamReader bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.BendSub_HC.txt")!);
       bendSubSW.WriteLine ($"/PROG BEND{Rank}SUB\n");
 
-      for (string? hardCode = bendSubHcSR.ReadLine (); hardCode != null; hardCode = bendSubHcSR.ReadLine ()) { // Header part of the hard code
+      for (string? hardCode = bendSubHcSR.ReadLine (); hardCode != null; hardCode = bendSubHcSR.ReadLine ()) // Header part of the hard code
          bendSubSW.WriteLine (hardCode);
-      }
-
       for (int i = 0; i < BendSubPts.Count; i++) {
          var ramPt = BendSubPts[i];
          WriteToSB (ramPtsSB, ramPt.pos, i + 1);
@@ -223,10 +212,12 @@ public class Bend {
 
    public void GenRamPts () {
       using StreamWriter ramPtsSW = new ($"BEND{Rank}_RamPts.txt");
-      for (int i = 0; i < RamPts.Count; i++) 
+      for (int i = 0; i < RamPts.Count; i++)
          ramPtsSW.WriteLine (RamPts[i]);
    }
+   #endregion
 
+   #region Implementation -----------------------------------------
    // Writes the positions to the required string builder. 
    void WriteToSB (StringBuilder sb, string[] jPositions, int pCount, string? label = null) {
       sb.Append ($"P[{pCount}:{(label != null ? $"\"{label}\"" : "\"\"")}]{{\nGP1:\n" +
@@ -234,10 +225,14 @@ public class Bend {
                  $"J1 = {jPositions[0]} deg, J2 = {jPositions[1]} deg, J3 = {jPositions[2]} deg,\n" +
                  $"J4 = {jPositions[3]} deg, J5 = {jPositions[4]} deg, J6 = {jPositions[5]} deg\n}};\n");
    }
+   #endregion
 
+   #region Private fields -----------------------------------------
    List<(int pCount, string[] pos, string tag, char motion)> mPositions;
    List<(string[] pos, char motion)> mBendSubPts;
    List<double> mRamPts;
    int mRank;
    bool mHasRegrip;
+   #endregion
 }
+#endregion
