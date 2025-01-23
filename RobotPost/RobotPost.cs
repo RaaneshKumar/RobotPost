@@ -2,10 +2,10 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-#region class RPP ------------------------------------------------------------------------------
-public partial class RPP {
+#region class RobotPost ------------------------------------------------------------------------------
+public partial class RobotPost {
    #region Constructor --------------------------------------------
-   public RPP (string path) {
+   public RobotPost (string path) {
       mFilePath = path;
       mFileName = Path.GetFileNameWithoutExtension (path);
       mPositions = [];
@@ -25,7 +25,7 @@ public partial class RPP {
       Regex pattern = MyRegex ();
       string label = "";
       bool isRamPt = false, isBend = false;
-      Bend bend = new (0,mGripperType); // Only for initializing.
+      Bend bend = new (0, mGripperType); // Only for initializing.
 
       for (int i = 0; ; i++) {
          string? rbcLine = mRbcSr.ReadLine ();
@@ -35,14 +35,15 @@ public partial class RPP {
          if (rbcLine.StartsWith ('(')) {
             if (mRbcSr.Peek () != '(') label = ++pCount == 1 ? "Init" : rbcLine[1..^1];
             if (rbcLine.Contains ("Bend ") && rbcLine != "Bend 0") { // Starts collecting points in Bend object.
-               bend = new (++bCount,mGripperType);
+               bend = new (++bCount, mGripperType);
                isBend = true;
                mBends.Add (bend);
             }
             if (rbcLine.Contains ("User")) isBend = false; // Back to RPP
             if (rbcLine.Contains ("Regrip")) bend.HasRegrip = true;
             if (rbcLine.Contains (":JawGripper:"))
-               if (int.TryParse (rbcLine[13..], out int gripperType)) mGripperType = gripperType == 0 ? Gripper.Vaccum : Gripper.Pinch;
+               // Gets the gripper type used
+               if (int.TryParse (rbcLine.Substring (14, 1), out int gripperType)) mGripperType = gripperType == 0 ? Gripper.Vaccum : Gripper.Pinch;
          } else if (rbcLine.StartsWith ("G01") && pattern.Match (rbcLine) is { Success: true } match) {
             string[] points = jointTags.Select (j => double.Parse (match.Groups[j].Value).ToString ("F2")).ToArray ();
             var motion = rbcLine.Contains ("Forward") ? 'J' : 'L';
@@ -65,12 +66,12 @@ public partial class RPP {
    }
 
    void GenMainLS () {
-      var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.tag == "User1").First ());
+      var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.tag == "User1").FirstOrDefault ());
       depositIdx = depositIdx == -1 ? 0 : depositIdx;
       StringBuilder positionsSB = new ();
       using StreamWriter mainLsSW = new ($"{mFileName}.LS");
       using StreamReader headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
-      using StreamReader mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream (mGripperType == Gripper.Vaccum ? "RobotPost.HardCodes.MainLS_HC(VG).txt" : "RobotPost.HardCodes.MainLS_HC(PG).txt")!);
+      using StreamReader mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.MainLS_HC({(mGripperType == Gripper.Vaccum ? "VG" : "PG")}).txt")!);
 
       mainLsSW.WriteLine ($"/PROG  {mFileName}\n");
       // Header part of the hard code
@@ -130,7 +131,7 @@ public enum Gripper { Vaccum, Pinch }
 public class Bend {
 
    #region Constructor --------------------------------------------
-   public Bend (int rank,Gripper gripperType) {
+   public Bend (int rank, Gripper gripperType) {
       mRank = rank;
       mPositions = [];
       mBendSubPts = [];
@@ -171,9 +172,8 @@ public class Bend {
       using StreamReader bendLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.{(HasRegrip ? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}")!);
       bendLsSW.WriteLine ($"/PROG  Bend{Rank}Positioning_sub\n");
 
-      for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) { // Header part of the hard code
+      for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ())// Header part of the hard code
          bendLsSW.WriteLine (header);
-      }
 
       for (int i = 1; ; i++) { // Remaining part of the hard code
          var hardCode = bendLsSR.ReadLine ();
@@ -205,7 +205,7 @@ public class Bend {
    public void GenBendSub () {
       StringBuilder ramPtsSB = new ();
       using StreamWriter bendSubSW = new ($"BEND{Rank}SUB.LS");
-      using StreamReader bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream (mGripperType == Gripper.Vaccum ? "RobotPost.HardCodes.BendSub_HC(VG).txt" : "RobotPost.HardCodes.BendSub_HC(PG).txt")!);
+      using StreamReader bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.BendSub_HC({(mGripperType == Gripper.Vaccum ? "VG" : "PG")}).txt")!);
       bendSubSW.WriteLine ($"/PROG BEND{Rank}SUB\n");
 
       for (string? hardCode = bendSubHcSR.ReadLine (); hardCode != null; hardCode = bendSubHcSR.ReadLine ()) // Header part of the hard code

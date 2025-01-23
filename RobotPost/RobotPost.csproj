@@ -10,8 +10,10 @@
   <ItemGroup>
     <None Remove="HardCodes\BendLS_NoRegripHC.txt" />
     <None Remove="HardCodes\BendLS_RegripHC.txt" />
+    <None Remove="HardCodes\BendSub_HC%28PG%29.txt" />
     <None Remove="HardCodes\BendSub_HC(VG).txt" />
     <None Remove="HardCodes\Header.txt" />
+    <None Remove="HardCodes\MainLS_HC%28PG%29.txt" />
     <None Remove="HardCodes\MainLS_HC(VG).txt" />
   </ItemGroup>
 
@@ -19,8 +21,10 @@
     <EmbeddedResource Include="HardCodes\BendLS_NoRegripHC.txt" />
     <EmbeddedResource Include="HardCodes\BendLS_RegripHC.txt" />
     <EmbeddedResource Include="HardCodes\BendSub_HC%28VG%29.txt" />
+    <EmbeddedResource Include="HardCodes\BendSub_HC(PG).txt" />
     <EmbeddedResource Include="HardCodes\Header.txt" />
     <EmbeddedResource Include="HardCodes\MainLS_HC%28VG%29.txt" />
+    <EmbeddedResource Include="HardCodes\MainLS_HC(PG).txt" />
   </ItemGroup>
 
 </Project>
