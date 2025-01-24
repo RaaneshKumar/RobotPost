@@ -1,12 +1,14 @@
  !,Program for Positioning Part for First Bend ; 
   LBL[11] ;  
   IF (!DI[5:RAM_MOVING]) THEN ;  
-[1] 
+[1]
 [2]
+[3] 
+[4]
   UFRAME_NUM=2 ;  
-[3]
+[5]
   //L P[10:Pinch Point] R[16:SPD_L]mm/sec FINE    ;  
-  PR[62]=P[9:Mute Point]    ;
+  PR[62]=LPOS    ;
   PR[60:LPOS_MUT]=LPOS    ;
    ;
   ELSE ;
@@ -35,8 +37,9 @@
   DO[3:MOVE_TO_UDP]=ON ;
   WAIT (DI[9:UDP_REACHED])    ;
   DO[3:MOVE_TO_UDP]=OFF ;
-[9]
 [10]
+[11]
+[12]
   //WAIT (DI[8:EoD_REACHED])    ;
   DO[2:MOVE_TO_LDP]=OFF ;
   //UFRAME_NUM=3 ;

@@ -1,0 +1,94 @@
+﻿  !,Program to pick a part ;
+  LBL[100]; 
+  DO[500:GRIP_OPEN]=ON; 
+  DO[499:GRIP_CLOSE]=OFF; 
+  R[28]=1; 
+  DO[5:START_PROGRAM]=ON ; 
+  UFRAME_NUM=1 ; 
+  UTOOL_NUM=2 ; 
+  R[15]=50; 
+  R[16]=300; 
+[1]
+[2]
+  //WAIT (DI[13:GRIPPER_OPEN_FB])    ;
+  WAIT   1.50(sec) ;				 
+[3]
+[4]
+[5]
+  DO[500:GRIP_OPEN]=OFF;
+  DO[499:GRIP_CLOSE]=ON;
+  WAIT 0.25(sec);
+  //WAIT (DI[14:GRIPPER_CLOSE_FB])    ;
+  R[28]=2;	  
+[6]
+[7]
+[8]
+  UFRAME_NUM=2 ;
+[9]
+  R[28]=1;	  
+  R[10]=1    ;
+  R[17]=1 ;
+  LBL[1] ;
+  SELECT R[10]=1,JMP LBL[2] ;
+         =2,JMP LBL[3] ;
+         =3,JMP LBL[4] ;
+         =4,JMP LBL[5] ;
+         =5,JMP LBL[6] ;
+         =6,JMP LBL[7] ;
+         =7,JMP LBL[8] ;
+         ELSE,JMP LBL[1] ;    
+  LBL[2:INIT] ;
+  IF (DO[3:MOVE_TO_UDP] OR DI[3:FIRST_BEND_ACTIVE] AND !DI[9:UDP_REACHED]) THEN ;
+  R[10]=2    ;
+   ;
+  ENDIF ;
+  IF (DI[1:NC_START] AND DI[11:PRESS_OK]) THEN ;
+  R[10]=3    ;
+  JMP LBL[1] ;
+  ELSE ;
+  JMP LBL[1] ;
+  ENDIF ;
+   ;
+  LBL[3:RAMUP] ;
+  DO[3:MOVE_TO_UDP]=ON ;
+  WAIT (DI[9:UDP_REACHED])    ;
+  DO[3:MOVE_TO_UDP]=OFF ;
+  R[10]=3    ;
+  JMP LBL[1] ;
+   ;
+  LBL[4:FASTCLOSING] ;
+  IF (DI[3:FIRST_BEND_ACTIVE] OR DI[4:LAST_BEND_ACTIVE] AND DI[9:UDP_REACHED]) THEN ;
+  DO[4:STEP_CHANGE]=ON ;
+  WAIT (DI[2:BACKGAUGE_IN_POSITION])    ;
+  //DO[4:STEP_CHANGE]=OFF ;
+  ELSE ;
+  JMP LBL[1] ;
+  ENDIF ;
+  DO[8:ROBOUNSAFE]=ON ;
+  ;
+*
+          ELSE,JMP LBL[8] ;
+  IF (!DI[4:LAST_BEND_ACTIVE]) THEN ;
+  JMP LBL[4] ;
+  ENDIF ;
+  ;
+  LBL[8:TODEPOSIT] ;   
+(1)
+  DO[500:GRIP_OPEN]=ON;
+  DO[499:GRIP_CLOSE]=OFF;
+  WAIT 0.25(sec);
+  //WAIT (DI[13:GRIPPER_OPEN_FB])    ;
+(2)
+(3)
+(4)
+  R[10]=1    ;
+  JMP LBL[9] ;
+  LBL[9] ;
+  DO[1:CLAMPING_POINT_BIT]=OFF ;
+  DO[2:MOVE_TO_LDP]=OFF ;
+  DO[3:MOVE_TO_UDP]=OFF ;
+  DO[4:STEP_CHANGE]=OFF ;
+  DO[6:ENABLE_RAM_DOWN]=OFF ;
+  DO[5:START_PROGRAM]=OFF ;
+(5)
+  JMP LBL[100] ;

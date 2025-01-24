@@ -1,9 +1,9 @@
-/ATTR
+﻿/ATTR
 OWNER		= MNEDITOR;
-COMMENT		= "12:00 12-04";
+COMMENT		= "14:13 12-10";
 PROG_SIZE	= 2991;
 CREATE		= DATE 24-11-05  TIME 14:23:52;
-MODIFIED	= DATE 24-12-04 TIME 12:00:04;
+MODIFIED	= DATE 24-12-10 TIME 14:13:29;
 FILE_NAME	= TESTDEF;
 VERSION		= 0;
 LINE_COUNT	= 26;
@@ -30,16 +30,16 @@ LINE_TRACK;
    2:  UFRAME_NUM=2 ;
    3:  UTOOL_NUM=2 ;
    4:  R[15:SPD_J]=100    ;
-   5:  FOR R[33]=1 TO 25 ;
+   5:  FOR R[33]=1 TO 13 ;
    6:  PR[R[33]]=P[R[33]]    ;
    7:  ENDFOR ;
-   8:  ;
-   9:  DO[505]=ON;
-  10:  wait 1(sec);
+   8:  DO[500:GRIP_OPEN]=ON;
+   9:  DO[499:GRIP_CLOSE]=OFF;
+  10:  wait .25(sec);
   11:J P[1] R[15:SPD_J]% CNT100    ;
-  12:  wait 0.25(sec);
-  13:  DO[505]=OFF;    
-  14:  wait .25(sec);
+  12:  DO[500:GRIP_OPEN]=OFF;
+  13:  DO[499:GRIP_CLOSE]=ON;    
+  14:  wait .1(sec);
   15:  R[38]=0    ;
   16:  R[35]=0    ;
   17:  DO[2:MOVE_TO_LDP]=ON ;
@@ -52,6 +52,6 @@ LINE_TRACK;
   24:  JMP LBL[2] ;
   25:  R[38]=R[38]+1    ;
   26:  LBL[3] ;
-  27:J P[25] R[15:SPD_J]% CNT100    ;
+  27:J P[13] R[15:SPD_J]% CNT100    ;
   28:  R[15:SPD_J]=20    ;
 /POS
