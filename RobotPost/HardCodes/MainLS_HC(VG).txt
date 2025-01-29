@@ -9,13 +9,15 @@
 [1]
 J P[23] 100% CNT100    ;
 [2]
-  PR[70]=P[3:Contact]    ;
-  PR[70,3]=PR[70,3]+100    ;
-  PR[70,6]=PR[70,6]-3    ;
+  //PR[70]=P[3:Contact]    ;
+  //PR[70,3]=PR[70,3]+100    ;
+  //PR[70,6]=PR[70,6]-3    ;
    ;
-  CALL STACK_SEARCH    ;
-  //L P[3:Contact] R[16:SPD_L]mm/sec FINE    ;
-  //DO[505:VAC_GRIP_ON]=OFF ;
+  //CALL STACK_SEARCH    ;
+  LBL[50];
+  SKIP CONDITION DI[506]=ON;
+L P[3:Contact] R[16:SPD_L]mm/sec FINE SKIP,LBL[50] ;
+  DO[505:VAC_GRIP_ON]=OFF ;
 [4]
 [5]
 [6]

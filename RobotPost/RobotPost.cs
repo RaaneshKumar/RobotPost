@@ -34,16 +34,16 @@ public partial class RobotPost {
          if (rbcLine == "Bend 0") { isRamPt = true; bCount++; continue; }
          if (rbcLine.StartsWith ('(')) {
             if (mRbcSr.Peek () != '(') label = ++pCount == 1 ? "Init" : rbcLine[1..^1];
-            if (rbcLine.Contains ("Bend ") && rbcLine != "Bend 0") { // Starts collecting points in Bend object.
+            if (rbcLine.StartsWith ("(-") && rbcLine.Contains ("Bend ")) { // Starts collecting points in Bend object.
                bend = new (++bCount, mGripperType);
                isBend = true;
                mBends.Add (bend);
             }
-            if (rbcLine.Contains ("User")) isBend = false; // Back to RPP
+            if (rbcLine.Contains ("Post-bend Safe")) isBend = false; // Back to RPP
             if (rbcLine.Contains ("Regrip")) bend.HasRegrip = true;
             if (rbcLine.Contains (":JawGripper:"))
                // Gets the gripper type used
-               if (int.TryParse (rbcLine.Substring (14, 1), out int gripperType)) mGripperType = gripperType == 0 ? Gripper.Vaccum : Gripper.Pinch;
+               if (int.TryParse (rbcLine.Substring (14, 1), out int gripperType)) mGripperType = gripperType == 0 ? EGripper.Vaccum : EGripper.Pinch;
          } else if (rbcLine.StartsWith ("G01") && pattern.Match (rbcLine) is { Success: true } match) {
             string[] points = jointTags.Select (j => double.Parse (match.Groups[j].Value).ToString ("F2")).ToArray ();
             var motion = rbcLine.Contains ("Forward") ? 'J' : 'L';
@@ -66,12 +66,13 @@ public partial class RobotPost {
    }
 
    void GenMainLS () {
-      var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.tag == "User1").FirstOrDefault ());
+      // Collect post bend safe of last bend after which deposit points starts.
+      var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.tag == "Post-bend Safe").LastOrDefault ());
       depositIdx = depositIdx == -1 ? 0 : depositIdx;
       StringBuilder positionsSB = new ();
       using StreamWriter mainLsSW = new ($"{mFileName}.LS");
       using StreamReader headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
-      using StreamReader mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.MainLS_HC({(mGripperType == Gripper.Vaccum ? "VG" : "PG")}).txt")!);
+      using StreamReader mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.MainLS_HC({(mGripperType == EGripper.Vaccum ? "VG" : "PG")}).txt")!);
 
       mainLsSW.WriteLine ($"/PROG  {mFileName}\n");
       // Header part of the hard code
@@ -120,18 +121,18 @@ public partial class RobotPost {
    List<(int pCount, string[] pos, string tag, char motion)> mPositions; // Has Pickup and Deposit positions
    List<Bend> mBends;
    StreamReader mRbcSr;
-   Gripper mGripperType;
+   EGripper mGripperType;
    #endregion
 }
 #endregion
 
-public enum Gripper { Vaccum, Pinch }
+public enum EGripper { Vaccum, Pinch }
 
 #region class Bend -----------------------------------------------------------------------------
 public class Bend {
 
    #region Constructor --------------------------------------------
-   public Bend (int rank, Gripper gripperType) {
+   public Bend (int rank, EGripper gripperType) {
       mRank = rank;
       mPositions = [];
       mBendSubPts = [];
@@ -205,7 +206,7 @@ public class Bend {
    public void GenBendSub () {
       StringBuilder ramPtsSB = new ();
       using StreamWriter bendSubSW = new ($"BEND{Rank}SUB.LS");
-      using StreamReader bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.BendSub_HC({(mGripperType == Gripper.Vaccum ? "VG" : "PG")}).txt")!);
+      using StreamReader bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.BendSub_HC({(mGripperType == EGripper.Vaccum ? "VG" : "PG")}).txt")!);
       bendSubSW.WriteLine ($"/PROG BEND{Rank}SUB\n");
 
       for (string? hardCode = bendSubHcSR.ReadLine (); hardCode != null; hardCode = bendSubHcSR.ReadLine ()) // Header part of the hard code
@@ -240,7 +241,7 @@ public class Bend {
    List<double> mRamPts;
    int mRank;
    bool mHasRegrip;
-   Gripper mGripperType;
+   EGripper mGripperType;
    #endregion
 }
 #endregion
