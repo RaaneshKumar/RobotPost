@@ -48,7 +48,7 @@ public partial class RobotPost {
             string[] points = jointTags.Select (j => double.Parse (match.Groups[j].Value).ToString ("F2")).ToArray ();
             var motion = rbcLine.Contains ("Forward") ? 'J' : 'L';
             if (isRamPt) mBends[bCount - 1].BendSubPts.Add ((points, motion)); // Collects ram points for each bend.
-            else (isBend ? bend.Positions : mPositions).Add ((pCount, points, label, motion));
+            else (isBend ? bend.Positions : mPositions).Add (new (pCount, points, label, motion));
          } else
             if (isRamPt) mBends[bCount - 1].RamPts.Add (double.Parse (rbcLine));
       }
@@ -67,7 +67,7 @@ public partial class RobotPost {
 
    void GenMainLS () {
       // Collect post bend safe of last bend after which deposit points starts.
-      var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.tag == "Post-bend Safe").LastOrDefault ());
+      var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.Tag == "Post-bend Safe").LastOrDefault ());
       depositIdx = depositIdx == -1 ? 0 : depositIdx;
       StringBuilder positionsSB = new ();
       using StreamWriter mainLsSW = new ($"{mFileName}.LS");
@@ -84,20 +84,20 @@ public partial class RobotPost {
          if (hardCode.StartsWith ('[')) {
             int pointIdx = int.Parse (hardCode.Split ('[', ']')[1]) - 1;
             var point = mPositions[pointIdx];
-            mainLsSW.WriteLine ($"  {i}: {point.motion} P[{point.pCount}:{point.tag}] {(point.motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+            mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Tag}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
          } else if (hardCode.StartsWith ('*')) // Sub Bend Program Calls
             for (int j = 1; j <= Bends.Count; j++)
                mainLsSW.WriteLine ($"  {(j == 1 ? i++ : i)}:{(j == 1 ? $"  SELECT R[17]={j},CALL BEND{j}Positioning_sub ;" : $"       ={j},CALL BEND{j}Positioning_sub ;")}");
          else if (hardCode.StartsWith ('(')) { // Points after deposit
             int hcIdx = int.Parse (hardCode.Split ('(', ')')[1]) - 1;
             var point = mPositions[depositIdx + hcIdx];
-            mainLsSW.WriteLine ($"  {i}: {point.motion} P[{point.pCount}:{point.tag}] {(point.motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+            mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Tag}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
          } else mainLsSW.WriteLine ($"  {i}: {hardCode}");
       }
 
       for (int i = 0; i < mPositions.Count; i++) {
          var position = mPositions[i];
-         WriteToSB (positionsSB, position.pos, position.pCount, position.tag);
+         WriteToSB (positionsSB, position.Pos, position.PCount, position.Tag);
       }
       mainLsSW.WriteLine ("/POS\n" + positionsSB + "\n/END");
    }
@@ -118,7 +118,7 @@ public partial class RobotPost {
 
    #region Private fields -----------------------------------------
    string mFileName, mFilePath;
-   List<(int pCount, string[] pos, string tag, char motion)> mPositions; // Has Pickup and Deposit positions
+   List<Position> mPositions; // Has Pickup and Deposit positions
    List<Bend> mBends;
    StreamReader mRbcSr;
    EGripper mGripperType;
@@ -126,7 +126,7 @@ public partial class RobotPost {
 }
 #endregion
 
-public enum EGripper { Vaccum, Pinch }
+
 
 #region class Bend -----------------------------------------------------------------------------
 public class Bend {
@@ -149,7 +149,7 @@ public class Bend {
       set => mHasRegrip = value;
    }
 
-   public List<(int pCount, string[] pos, string tag, char motion)> Positions {
+   public List<Position> Positions {
       get => mPositions;
       set => mPositions = value;
    }
@@ -186,7 +186,7 @@ public class Bend {
                else pointIdx -= 2;
             }
             var point = Positions[pointIdx];
-            bendLsSW.WriteLine ($"  {i}: {point.motion} P[{point.pCount}:{point.tag}] {(point.motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+            bendLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Tag}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
          } else if (hardCode.StartsWith ('*')) { // Bend sub Calls
             bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
          } else if (hardCode.StartsWith ('^')) {
@@ -198,7 +198,7 @@ public class Bend {
 
       for (int i = 0; i < Positions.Count; i++) {
          var position = Positions[i];
-         WriteToSB (positionsSB, position.pos, position.pCount, position.tag);
+         WriteToSB (positionsSB, position.Pos, position.PCount, position.Tag);
       }
       bendLsSW.WriteLine ("/POS\n" + positionsSB + "\n/END");
    }
@@ -236,7 +236,7 @@ public class Bend {
    #endregion
 
    #region Private fields -----------------------------------------
-   List<(int pCount, string[] pos, string tag, char motion)> mPositions;
+   List<Position> mPositions;
    List<(string[] pos, char motion)> mBendSubPts;
    List<double> mRamPts;
    int mRank;
@@ -244,4 +244,50 @@ public class Bend {
    EGripper mGripperType;
    #endregion
 }
+#endregion
+
+#region class Position -------------------------------------------------------------------------
+public class Position {
+   public Position (int pCount, string[] pos, string tag, char motion) {
+      mMotion = motion;
+      mPCount = pCount;
+      mPos = pos;
+      mPrevPos = new ();
+      mTag = tag;
+   }
+
+   public Position () {
+      mPos = [];
+      mPrevPos = new ();
+      mTag = "";
+   }
+
+   #region Properties ---------------------------------------------
+
+   public char Motion => mMotion;
+
+   public int PCount => mPCount;
+
+   public string[] Pos => mPos;
+
+   public string Tag => mTag;
+
+   public Position PrevPos {
+      get => mPrevPos;
+      set => mPrevPos = value;
+   }
+   #endregion
+
+   #region Private fields -----------------------------------------
+   char mMotion;
+   int mPCount;
+   string[] mPos;
+   Position mPrevPos;
+   string mTag;
+   #endregion
+}
+#endregion
+
+#region Enums ----------------------------------------------------------------------------------
+public enum EGripper { Vaccum, Pinch }
 #endregion
