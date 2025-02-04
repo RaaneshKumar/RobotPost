@@ -1,12 +1,12 @@
  !,Program for Positioning Part for First Bend ; 
   LBL[11] ;  
   IF (!DI[5:RAM_MOVING]) THEN ;  
-[1]
-[2]
-[3] 
-[4]
+[Pre-bend Safe]
+[Station Front]
+[Insert Part] 
+[Part Insert2]
   UFRAME_NUM=2 ;  
-[5]
+[Mute Point]
   //L P[10:Pinch Point] R[16:SPD_L]mm/sec FINE    ;  
   PR[62]=LPOS    ;
   PR[60:LPOS_MUT]=LPOS    ;
@@ -37,9 +37,9 @@
   DO[3:MOVE_TO_UDP]=ON ;
   WAIT (DI[9:UDP_REACHED])    ;
   DO[3:MOVE_TO_UDP]=OFF ;
-[10]
-[11]
-[12]
+[Decompress]
+[Opening]
+[Post Bend Safe0]
   //WAIT (DI[8:EoD_REACHED])    ;
   DO[2:MOVE_TO_LDP]=OFF ;
   //UFRAME_NUM=3 ;
