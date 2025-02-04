@@ -7,7 +7,7 @@
 [Part Insert2]
   UFRAME_NUM=2 ;  
 [Mute Point]
-  //L P[10:Pinch Point] R[16:SPD_L]mm/sec FINE    ;  
+[Pinch Point]
   PR[62]=LPOS    ;
   PR[60:LPOS_MUT]=LPOS    ;
    ;
@@ -19,7 +19,7 @@
   DO[8:ROBOUNSAFE]=OFF ;
   DO[6:ENABLE_RAM_DOWN]=ON ;
   WAIT (DI[10:BELOW_MUTE_POINT])    ;
-  CALL BG_AL_1    ;
+  CALL BG_AL_VAC1    ;
    ;
   JMP LBL[5] ;
   LBL[5:CLAMPING] ;
@@ -47,7 +47,6 @@
   DO[3:MOVE_TO_UDP]=OFF ;
 [Decompress]
 [Opening]
-[Lower]
 [Post Bend Safe0]
   //WAIT (DI[8:EoD_REACHED])    ;
   DO[2:MOVE_TO_LDP]=OFF ;

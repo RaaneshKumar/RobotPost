@@ -1,4 +1,6 @@
-﻿using System.Reflection;
+﻿using System.Drawing;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -43,12 +45,22 @@ public partial class RobotPost {
             if (rbcLine.Contains ("Regrip")) bend.HasRegrip = true;
             if (rbcLine.Contains (":JawGripper:"))
                // Gets the gripper type used
-               if (int.TryParse (rbcLine.Substring (14, 1), out int gripperType)) mGripperType = gripperType == 0 ? EGripper.Vaccum : EGripper.Pinch;
+               if (int.TryParse (rbcLine.Substring (14, 1), out int gripperType)) mGripperType = gripperType == 0 ? EGripper.Vacuum : EGripper.Pinch;
          } else if (rbcLine.StartsWith ("G01") && pattern.Match (rbcLine) is { Success: true } match) {
             string[] points = jointTags.Select (j => double.Parse (match.Groups[j].Value).ToString ("F2")).ToArray ();
             var motion = rbcLine.Contains ("Forward") ? 'J' : 'L';
             if (isRamPt) mBends[bCount - 1].BendSubPts.Add ((points, motion)); // Collects ram points for each bend.
-            else (isBend ? bend.Positions : mPositions).Add (new (pCount, points, label, motion));
+            //else (isBend ? bend.Positions : mPositions).Add (new (pCount, points, label, motion));
+            else {
+               Position newPos = new (pCount, points, label, motion);
+               if (isBend) {
+                  if (bend.Positions.Count != 0) newPos.PrevPos = bend.Positions[^1];
+                  bend.Positions.Add (newPos);
+               } else {
+                  if (mPositions.Count != 0) newPos.PrevPos = mPositions[^1];
+                  mPositions.Add (newPos);
+               }
+            }
          } else
             if (isRamPt) mBends[bCount - 1].RamPts.Add (double.Parse (rbcLine));
       }
@@ -67,12 +79,12 @@ public partial class RobotPost {
 
    void GenMainLS () {
       // Collect post bend safe of last bend after which deposit points starts.
-      var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.Tag == "Post-bend Safe").LastOrDefault ());
+      var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.Name == "Post-bend Safe").LastOrDefault ());
       depositIdx = depositIdx == -1 ? 0 : depositIdx;
       StringBuilder positionsSB = new ();
       using StreamWriter mainLsSW = new ($"{mFileName}.LS");
       using StreamReader headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
-      using StreamReader mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.MainLS_HC({(mGripperType == EGripper.Vaccum ? "VG" : "PG")}).txt")!);
+      using StreamReader mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.MainLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
 
       mainLsSW.WriteLine ($"/PROG  {mFileName}\n");
       // Header part of the hard code
@@ -82,22 +94,39 @@ public partial class RobotPost {
          var hardCode = mainLsSR.ReadLine ();
          if (hardCode == null) break;
          if (hardCode.StartsWith ('[')) {
-            int pointIdx = int.Parse (hardCode.Split ('[', ']')[1]) - 1;
-            var point = mPositions[pointIdx];
-            mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Tag}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+            //int pointIdx = int.Parse (hardCode.Split ('[', ']')[1]) - 1;
+            //var point = mPositions[pointIdx];
+            var pointName = hardCode.Split ('[', ']')[1];
+            var point = mPositions.Where (x => x.Name == pointName).First ();
+
+            if (point.PCount != 1) {
+               if (!point.PrevPos.IsWritten) point.CheckAndWritePrevPos (mainLsSW, i);
+            }
+
+            mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+            point.IsWritten = true;
          } else if (hardCode.StartsWith ('*')) // Sub Bend Program Calls
             for (int j = 1; j <= Bends.Count; j++)
                mainLsSW.WriteLine ($"  {(j == 1 ? i++ : i)}:{(j == 1 ? $"  SELECT R[17]={j},CALL BEND{j}Positioning_sub ;" : $"       ={j},CALL BEND{j}Positioning_sub ;")}");
          else if (hardCode.StartsWith ('(')) { // Points after deposit
-            int hcIdx = int.Parse (hardCode.Split ('(', ')')[1]) - 1;
-            var point = mPositions[depositIdx + hcIdx];
-            mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Tag}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+            //int hcIdx = int.Parse (hardCode.Split ('(', ')')[1]) - 1;
+            //var point = mPositions[depositIdx + hcIdx];
+            var pointName = hardCode.Split ('(', ')')[1];
+            var point = mPositions.Where (x => x.Name == pointName).First ();
+
+            if (point.PCount != 1) {
+               if (!point.PrevPos.IsWritten) point.CheckAndWritePrevPos (mainLsSW, i);
+            }
+
+            mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+            point.IsWritten = true;
+            //point.Che
          } else mainLsSW.WriteLine ($"  {i}: {hardCode}");
       }
 
       for (int i = 0; i < mPositions.Count; i++) {
          var position = mPositions[i];
-         WriteToSB (positionsSB, position.Pos, position.PCount, position.Tag);
+         WriteToSB (positionsSB, position.Pos, position.PCount, position.Name);
       }
       mainLsSW.WriteLine ("/POS\n" + positionsSB + "\n/END");
    }
@@ -173,6 +202,7 @@ public class Bend {
       using StreamReader bendLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.{(HasRegrip ? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}")!);
       bendLsSW.WriteLine ($"/PROG  Bend{Rank}Positioning_sub\n");
 
+      var firstPos = mPositions[0];
       for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ())// Header part of the hard code
          bendLsSW.WriteLine (header);
 
@@ -180,13 +210,19 @@ public class Bend {
          var hardCode = bendLsSR.ReadLine ();
          if (hardCode == null) break;
          if (hardCode.StartsWith ('[')) {
-            int pointIdx = int.Parse (hardCode.Split ('[', ']')[1]) - 1;
-            if (Rank == 1) {
-               if (pointIdx is 0 or 1) continue;
-               else pointIdx -= 2;
+            //int pointIdx = int.Parse (hardCode.Split ('[', ']')[1]) - 1;
+            var pointName = hardCode.Split ('[', ']')[1];
+            if (pointName == "") continue;
+            if (Rank == 1 && (pointName is "Pre-bend Safe" or "Station Front")) continue;
+            var point = mPositions.Where (x=> x.Name == pointName).First ();
+            //var point = Positions[pointIdx];
+
+            if (point.PCount != firstPos.PCount) {
+               if (!point.PrevPos.IsWritten) point.CheckAndWritePrevPos (bendLsSW, i);
             }
-            var point = Positions[pointIdx];
-            bendLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Tag}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+
+            bendLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+            point.IsWritten = true;
          } else if (hardCode.StartsWith ('*')) { // Bend sub Calls
             bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
          } else if (hardCode.StartsWith ('^')) {
@@ -198,7 +234,7 @@ public class Bend {
 
       for (int i = 0; i < Positions.Count; i++) {
          var position = Positions[i];
-         WriteToSB (positionsSB, position.Pos, position.PCount, position.Tag);
+         WriteToSB (positionsSB, position.Pos, position.PCount, position.Name);
       }
       bendLsSW.WriteLine ("/POS\n" + positionsSB + "\n/END");
    }
@@ -206,7 +242,7 @@ public class Bend {
    public void GenBendSub () {
       StringBuilder ramPtsSB = new ();
       using StreamWriter bendSubSW = new ($"BEND{Rank}SUB.LS");
-      using StreamReader bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.BendSub_HC({(mGripperType == EGripper.Vaccum ? "VG" : "PG")}).txt")!);
+      using StreamReader bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.BendSub_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
       bendSubSW.WriteLine ($"/PROG BEND{Rank}SUB\n");
 
       for (string? hardCode = bendSubHcSR.ReadLine (); hardCode != null; hardCode = bendSubHcSR.ReadLine ()) // Header part of the hard code
@@ -248,29 +284,35 @@ public class Bend {
 
 #region class Position -------------------------------------------------------------------------
 public class Position {
-   public Position (int pCount, string[] pos, string tag, char motion) {
+   public Position (int pCount, string[] pos, string name, char motion) {
+      mIsWritten = false;
       mMotion = motion;
       mPCount = pCount;
       mPos = pos;
-      mPrevPos = new ();
-      mTag = tag;
+      //mPrevPos = new ();
+      mName = name;
    }
 
    public Position () {
-      mPos = [];
-      mPrevPos = new ();
-      mTag = "";
+      mIsWritten= false;
+      mPos = new string[6];
+      //mPrevPos = new ();
+      mName = "";
    }
 
    #region Properties ---------------------------------------------
-
+   public bool IsWritten {
+      get => mIsWritten;
+      set => mIsWritten = value;
+   }
+   
    public char Motion => mMotion;
 
    public int PCount => mPCount;
 
    public string[] Pos => mPos;
 
-   public string Tag => mTag;
+   public string Name => mName;
 
    public Position PrevPos {
       get => mPrevPos;
@@ -279,15 +321,16 @@ public class Position {
    #endregion
 
    #region Private fields -----------------------------------------
+   bool mIsWritten;
    char mMotion;
    int mPCount;
    string[] mPos;
    Position mPrevPos;
-   string mTag;
+   string mName;
    #endregion
 }
 #endregion
 
 #region Enums ----------------------------------------------------------------------------------
-public enum EGripper { Vaccum, Pinch }
+public enum EGripper { Vacuum, Pinch }
 #endregion
