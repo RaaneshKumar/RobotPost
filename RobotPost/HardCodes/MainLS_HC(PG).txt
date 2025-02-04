@@ -8,23 +8,23 @@
   UTOOL_NUM=2 ; 
   R[15]=50; 
   R[16]=300; 
-[1]
-[2]
+[Init]
+[Pick Safe]
   //WAIT (DI[13:GRIPPER_OPEN_FB])    ;
   WAIT   1.50(sec) ;				 
-[3]
-[4]
-[5]
+[Height]
+[Jaw Open]
+[Jaw Close]
   DO[500:GRIP_OPEN]=OFF;
   DO[499:GRIP_CLOSE]=ON;
   WAIT 0.25(sec);
   //WAIT (DI[14:GRIPPER_CLOSE_FB])    ;
   R[28]=2;	  
-[6]
-[7]
-[8]
+[Separate]
+[Pull Clear]
+[Safe.2]
   UFRAME_NUM=2 ;
-[9]
+[Aloft]
   R[28]=1;	  
   R[10]=1    ;
   R[17]=1 ;
@@ -73,14 +73,14 @@
   ENDIF ;
   ;
   LBL[8:TODEPOSIT] ;   
-(1)
+(Post-bend Safe)
   DO[500:GRIP_OPEN]=ON;
   DO[499:GRIP_CLOSE]=OFF;
   WAIT 0.25(sec);
   //WAIT (DI[13:GRIPPER_OPEN_FB])    ;
-(2)
-(3)
-(4)
+(Drop Approach)
+(Retreat)
+(Retreat.2)
   R[10]=1    ;
   JMP LBL[9] ;
   LBL[9] ;
@@ -90,5 +90,5 @@
   DO[4:STEP_CHANGE]=OFF ;
   DO[6:ENABLE_RAM_DOWN]=OFF ;
   DO[5:START_PROGRAM]=OFF ;
-(5)
+(Drop Retreat3)
   JMP LBL[100] ;

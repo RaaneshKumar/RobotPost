@@ -6,19 +6,21 @@
   UTOOL_NUM=2 ;
   R[15:SPD_J]=50    ;
   R[16:SPD_L]=300    ;
-[1]
+[Init]
 J P[23] 100% CNT100    ;
-[2]
-  PR[70]=P[3:Contact]    ;
-  PR[70,3]=PR[70,3]+100    ;
-  PR[70,6]=PR[70,6]-3    ;
+[Approach]
+  //PR[70]=P[3:Contact]    ;
+  //PR[70,3]=PR[70,3]+100    ;
+  //PR[70,6]=PR[70,6]-3    ;
    ;
-  CALL STACK_SEARCH    ;
-  //L P[3:Contact] R[16:SPD_L]mm/sec FINE    ;
-  //DO[505:VAC_GRIP_ON]=OFF ;
-[4]
-[5]
-[6]
+  //CALL STACK_SEARCH    ;
+  LBL[50];
+  SKIP CONDITION DI[506]=ON;
+[Contact]
+  DO[505:VAC_GRIP_ON]=OFF ;
+[Separate]
+[Lift Clear]
+[Aloft]
    R[17]=1;
   R[10]=1    ;
   LBL[1] ;
@@ -69,13 +71,13 @@ J P[23] 100% CNT100    ;
   ENDIF ;
  ;         
   LBL[8:TODEPOSIT] ;
-(1)
-(2)
+(Post-bend Safe)
+(Drop Approach)
   DO[505:VAC_GRIP_ON]=ON ;
   R[15:SPD_J]=100    ;
-(3)
-(4)
-(5)
+(Retreat)
+(Retreat.2)
+(Drop Retreat3)
   R[10]=1    ;
   JMP LBL[9] ;
   LBL[9] ;
@@ -85,5 +87,5 @@ J P[23] 100% CNT100    ;
   DO[4:STEP_CHANGE]=OFF ;
   DO[6:ENABLE_RAM_DOWN]=OFF ;
   DO[5:START_PROGRAM]=OFF ;
-(6)
+(Home)
   JMP LBL[100] ;
