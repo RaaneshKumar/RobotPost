@@ -1,6 +1,6 @@
  !,Program for Positioning Part for First Bend ; 
   LBL[11] ;  
-  IF (!DI[5:RAM_MOVING]) THEN ;  
+  IF (!DI[53:ECAT_RamMoving]) THEN ;  
 [Pre-bend Safe]
 [Station Front]
 [Insert Part] 
@@ -12,36 +12,36 @@
   PR[60:LPOS_MUT]=LPOS    ;
    ;
   ELSE ;
-  WAIT (!DI[5:RAM_MOVING])    ;
+  WAIT (!DI[53:ECAT_RamMoving])    ;
   JMP LBL[11] ;
   ENDIF ;
-  //WAIT (DI[12:FPDOWN])    ;
-  DO[8:ROBOUNSAFE]=OFF ;
-  DO[6:ENABLE_RAM_DOWN]=ON ;
-  WAIT (DI[10:BELOW_MUTE_POINT])    ;
+  //WAIT (DI[60:ECAT_FP_Down])    ;
+  DO[55:ECAT_RoboUnsafe]=OFF ;
+  DO[54:ECAT_EnableRamDown]=ON ;
+  WAIT (DI[58:ECAT_BelowMutePoint])    ;
   CALL BG_AL_VAC1    ;
    ;
   JMP LBL[5] ;
   LBL[5:CLAMPING] ;
-  DO[1:CLAMPING_POINT_BIT]=ON ;
-  WAIT (DI[6:CLAMPING_POINT])    ;
+  DO[49:ECAT_ClampingPointBit]=ON ;
+  WAIT (DI[54:ECAT_ClampingPointReach])    ;
    ;
   JMP LBL[6] ;
    ;
   LBL[6:MOVETOLDP] ;
-  DO[6:ENABLE_RAM_DOWN]=OFF ;
+  DO[54:ECAT_EnableRamDown]=OFF ;
   PR[73]=P[13:Over Bending]    ;
 *
-  DO[4:STEP_CHANGE]=OFF ;
-  DO[1:CLAMPING_POINT_BIT]=OFF ;
-  DO[3:MOVE_TO_UDP]=ON ;
-  WAIT (DI[9:UDP_REACHED])    ;
-  DO[3:MOVE_TO_UDP]=OFF ;
+  DO[52:ECAT_StepChange]=OFF ;
+  DO[9:ECAT_ClampingPointBit]=OFF ;
+  DO[51:ECAT_MoveToUDP]=ON ;
+  WAIT (DI[57:ECAT_UDP_Reached])    ;
+  DO[51:ECAT_MoveToUDP]=OFF ;
 [Decompress]
 [Opening]
 [Post Bend Safe0]
-  //WAIT (DI[8:EoD_REACHED])    ;
-  DO[2:MOVE_TO_LDP]=OFF ;
+  //WAIT (DI[56:ECAT_EoD_Reached])    ;
+  DO[50:ECAT_MoveToLDP]=OFF ;
   //UFRAME_NUM=3 ;
 ^
   ;

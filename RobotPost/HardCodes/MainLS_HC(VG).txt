@@ -1,7 +1,7 @@
   !,Program to pick a part ;
   LBL[100] ;
-  DO[505:VAC_GRIP_ON]=ON ;
-  DO[5:START_PROGRAM]=ON ;
+  DO[9:Vacuum_GripON\OFF]=ON ;
+  DO[53:START_PROGRAM]=ON ;
   UFRAME_NUM=1 ;
   UTOOL_NUM=2 ;
   R[15:SPD_J]=50    ;
@@ -15,9 +15,9 @@ J P[23] 100% CNT100    ;
    ;
   //CALL STACK_SEARCH    ;
   LBL[50];
-  SKIP CONDITION DI[506]=ON;
+  SKIP CONDITION DI[8:Stack_Height_FB]=ON;
 [Contact]
-  DO[505:VAC_GRIP_ON]=OFF ;
+  DO[9:Vacuum_GripON\OFF]=OFF ;
 [Separate]
 [Lift Clear]
 [Aloft]
@@ -34,11 +34,11 @@ J P[23] 100% CNT100    ;
          ELSE,JMP LBL[1] ;
    ;
   LBL[2:INIT] ;
-  IF (DO[3:MOVE_TO_UDP] OR DI[3:FIRST_BEND_ACTIVE] AND !DI[9:UDP_REACHED]) THEN ;
+  IF (DO[51:ECAT_MoveToUDP] OR DI[51:ECAT_FirstBendActive] AND !DI[57:ECAT_UDP_Reached]) THEN ;
   R[10]=2    ;
    ;
   ENDIF ;
-  IF (DI[1:NC_START] AND DI[11:PRESS_OK]) THEN ;
+  IF (DI[49:ECAT_NCStart] AND DI[59:ECAT_PressOk]) THEN ;
   R[10]=3    ;
   JMP LBL[1] ;
   ELSE ;
@@ -46,25 +46,25 @@ J P[23] 100% CNT100    ;
   ENDIF ;
    ;
   LBL[3:RAMUP] ;
-  DO[3:MOVE_TO_UDP]=ON ;
-  WAIT (DI[9:UDP_REACHED])    ;
-  DO[3:MOVE_TO_UDP]=OFF ;
+  DO[51:ECAT_MoveToUDP]=ON ;
+  WAIT (DI[57:ECAT_UDP_Reached])    ;
+  DO[51:ECAT_MoveToUDP]=OFF ;
   R[10]=3    ;
   JMP LBL[1] ;
    ;
   LBL[4:FASTCLOSING] ;
-  IF (DI[3:FIRST_BEND_ACTIVE] OR DI[4:LAST_BEND_ACTIVE] AND DI[9:UDP_REACHED]) THEN ;
-  DO[4:STEP_CHANGE]=ON ;
-  WAIT (DI[2:BACKGAUGE_IN_POSITION])    ;
-  //DO[4:STEP_CHANGE]=OFF ;
+  IF (DI[51:ECAT_FirstBendActive] OR DI[52:ECAT_LastBendActive] AND DI[57:ECAT_UDP_Reached]) THEN ;
+  DO[52:ECAT_StepChange]=ON ;
+  WAIT (DI[50:ECAT_BackgaugeInPosition])    ;
+  //DO[52:ECAT_StepChange]=OFF ;
   ELSE ;
   JMP LBL[1] ;
   ENDIF ;
-  DO[8:ROBOUNSAFE]=ON ;
+  DO[55:ECAT_RoboUnsafe]]=ON ;
   ;
 *
           ELSE,JMP LBL[8] ;
-  IF (!DI[4:LAST_BEND_ACTIVE]) THEN ;
+  IF (!DI[52:ECAT_LastBendActive]) THEN ;
   JMP LBL[4] ;
   ELSE ;
   JMP LBL[8] ;
@@ -73,7 +73,7 @@ J P[23] 100% CNT100    ;
   LBL[8:TODEPOSIT] ;
 (Post-bend Safe)
 (Drop Approach)
-  DO[505:VAC_GRIP_ON]=ON ;
+  DO[9:Vacuum_GripON\OFF]=ON ;
   R[15:SPD_J]=100    ;
 (Retreat)
 (Retreat.2)
@@ -81,11 +81,11 @@ J P[23] 100% CNT100    ;
   R[10]=1    ;
   JMP LBL[9] ;
   LBL[9] ;
-  DO[1:CLAMPING_POINT_BIT]=OFF ;
-  DO[2:MOVE_TO_LDP]=OFF ;
-  DO[3:MOVE_TO_UDP]=OFF ;
-  DO[4:STEP_CHANGE]=OFF ;
-  DO[6:ENABLE_RAM_DOWN]=OFF ;
-  DO[5:START_PROGRAM]=OFF ;
+  DO[49:ECAT_ClampingPointBit]=OFF ;
+  DO[50:ECAT_MoveToLDP]=OFF ;
+  DO[51:ECAT_MoveToUDP]=OFF ;
+  DO[52:ECAT_StepChange]=OFF ;
+  DO[54:ECAT_EnableRamDown]]=OFF ;
+  DO[53:ECAT_StartProgram]=OFF ;
 (Home)
   JMP LBL[100] ;
