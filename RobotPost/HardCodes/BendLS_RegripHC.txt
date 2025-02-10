@@ -38,8 +38,8 @@
 [Swivel 2]
 [Contact]
   DO[9]=OFF ;
-  wait(.25)sec;  
-
+  wait .25(sec);  
+  ;
   DO[52:ECAT_StepChange]=OFF ;
   DO[49:ECAT_ClampingPointBit]=OFF ;
   DO[51:ECAT_MoveToUDP]=ON ;
@@ -49,7 +49,7 @@
 [Opening]
 [Post Bend Safe0]
   //WAIT (DI[56:ECAT_EoD_Reached])    ;
-  DO[50:ECAT_MoveToLDP]]=OFF ;
+  DO[50:ECAT_MoveToLDP]=OFF ;
   //UFRAME_NUM=3 ;
 ^
   ;

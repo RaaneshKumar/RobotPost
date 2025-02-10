@@ -60,7 +60,7 @@ J P[23] 100% CNT100    ;
   ELSE ;
   JMP LBL[1] ;
   ENDIF ;
-  DO[55:ECAT_RoboUnsafe]]=ON ;
+  DO[55:ECAT_RoboUnsafe]=ON ;
   ;
 *
           ELSE,JMP LBL[8] ;
@@ -85,7 +85,7 @@ J P[23] 100% CNT100    ;
   DO[50:ECAT_MoveToLDP]=OFF ;
   DO[51:ECAT_MoveToUDP]=OFF ;
   DO[52:ECAT_StepChange]=OFF ;
-  DO[54:ECAT_EnableRamDown]]=OFF ;
+  DO[54:ECAT_EnableRamDown]=OFF ;
   DO[53:ECAT_StartProgram]=OFF ;
 (Home)
   JMP LBL[100] ;
