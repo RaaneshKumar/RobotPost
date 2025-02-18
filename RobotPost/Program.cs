@@ -27,7 +27,11 @@ if (!isValidDir || !allFilesExist) {
       ReadKey ();
       return; 
    }
-   else return;
+   else {
+      WriteLine ("\nNo files generated.");
+      ReadKey ();
+      return;
+   }
 }
 
 

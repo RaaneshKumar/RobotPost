@@ -50,7 +50,7 @@ public partial class RobotPost {
             string[] points = jointTags.Select (j => double.Parse (match.Groups[j].Value).ToString ("F2")).ToArray ();
             var motion = rbcLine.Contains ("Forward") ? 'J' : 'L';
             if (isRamPt) mBends[bCount - 1].BendSubPts.Add ((points, motion)); // Collects ram points for each bend.
-            //else (isBend ? bend.Positions : mPositions).Add (new (pCount, points, label, motion));
+            //else (isBend ? bend.Positions : mPositions).Add (new (pCount, points, label, motion)); 
             else {
                Position newPos = new (pCount, points, label, motion);
                if (isBend) {
