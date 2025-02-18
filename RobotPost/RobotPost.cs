@@ -50,7 +50,7 @@ public partial class RobotPost {
             string[] points = jointTags.Select (j => double.Parse (match.Groups[j].Value).ToString ("F2")).ToArray ();
             var motion = rbcLine.Contains ("Forward") ? 'J' : 'L';
             if (isRamPt) mBends[bCount - 1].BendSubPts.Add ((points, motion)); // Collects ram points for each bend.
-            //else (isBend ? bend.Positions : mPositions).Add (new (pCount, points, label, motion));
+            //else (isBend ? bend.Positions : mPositions).Add (new (pCount, points, label, motion)); 
             else {
                Position newPos = new (pCount, points, label, motion);
                if (isBend) {
@@ -66,25 +66,33 @@ public partial class RobotPost {
       }
    }
 
-   public void GenOutputFiles () {
+   public void GenOutputFiles (string dir = null) {
       CollectPositions ();
-      GenMainLS ();
+      GenMainLS (dir);
       for (int i = 0; i < Bends.Count; i++) {
          var bend = Bends[i];
-         bend.GenBendLS ();
-         bend.GenBendSub ();
+         bend.GenBendLS (dir);
+         bend.GenBendSub (dir);
          bend.GenRamPts ();
       }
    }
 
-   void GenMainLS () {
+   void GenMainLS (string dir) {
       // Collect post bend safe of last bend after which deposit points starts.
       var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.Name == "Post-bend Safe").LastOrDefault ());
       depositIdx = depositIdx == -1 ? 0 : depositIdx;
       StringBuilder positionsSB = new ();
       using StreamWriter mainLsSW = new ($"{mFileName}.LS");
-      using StreamReader headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
-      using StreamReader mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.MainLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
+      StreamReader headerSR;
+      StreamReader mainLsSR;
+
+      if (dir != null) {
+         headerSR = new ($"{dir}/Header.txt");
+         mainLsSR = new ($"{dir}/MainLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt");
+      } else {
+         headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
+         mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.MainLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!); 
+      }
 
       mainLsSW.WriteLine ($"/PROG  {mFileName}\n");
       // Header part of the hard code
@@ -195,12 +203,22 @@ public class Bend {
    #endregion
 
    #region Public methods -----------------------------------------
-   public void GenBendLS () {
+   public void GenBendLS (string dir) {
       StringBuilder positionsSB = new ();
       using StreamWriter bendLsSW = new ($"Bend{Rank}Positioning_Sub.LS");
-      using StreamReader headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
-      using StreamReader bendLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.{(HasRegrip ? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}")!);
       bendLsSW.WriteLine ($"/PROG  Bend{Rank}Positioning_sub\n");
+      StreamReader headerSR;
+      StreamReader bendLsSR;
+
+      if (dir != null) {
+         headerSR = new ($"{dir}/Header.txt");
+         bendLsSR = new ($"{dir}/{(HasRegrip ? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}");
+      } 
+      else {
+         headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
+         bendLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.{(HasRegrip ? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}")!);
+      }
+      
 
       var firstPos = mPositions[0];
       for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ())// Header part of the hard code
@@ -239,11 +257,17 @@ public class Bend {
       bendLsSW.WriteLine ("/POS\n" + positionsSB + "\n/END");
    }
 
-   public void GenBendSub () {
+   public void GenBendSub (string dir) {
       StringBuilder ramPtsSB = new ();
       using StreamWriter bendSubSW = new ($"BEND{Rank}SUB.LS");
-      using StreamReader bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.BendSub_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
       bendSubSW.WriteLine ($"/PROG BEND{Rank}SUB\n");
+      StreamReader bendSubHcSR;
+
+      if (dir != null) {
+         bendSubHcSR = new ($"{dir}/BendSub_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt");
+      } else {
+         bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.BendSub_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
+      }
 
       for (string? hardCode = bendSubHcSR.ReadLine (); hardCode != null; hardCode = bendSubHcSR.ReadLine ()) // Header part of the hard code
          bendSubSW.WriteLine (hardCode);
