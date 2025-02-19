@@ -1,11 +1,12 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Net.WebSockets;
 using static System.Console;
 
-if (args.Length == 0) { WriteLine ("No input!"); ReadKey (); return; }
-var rpp = new RobotPost (args[0]);
+//if (args.Length == 0) { WriteLine ("no input!"); ReadKey (); return; }
+//var rpp = new RobotPost (args[0]);
+var rpp = new RobotPost ("C:\\Users\\nehrujiaj\\Downloads\\BOX8Bends.rbc");
 
-Console.Write ("Enter the hard code files directory: ");
-string hcDir = Console.ReadLine ();
+Write ("Enter the hard code files directory: ");
+string? hcDir = ReadLine ();
 bool isValidDir = Directory.Exists (hcDir);
 bool allFilesExist = File.Exists (hcDir + "/BendLS_NoRegripHC.txt")
      && File.Exists (hcDir + "/BendLS_RegripHC.txt")
@@ -15,14 +16,15 @@ bool allFilesExist = File.Exists (hcDir + "/BendLS_NoRegripHC.txt")
      && File.Exists (hcDir + "/MainLS_HC(PG).txt")
      && File.Exists (hcDir + "/MainLS_HC(VG).txt");
 
-if (!isValidDir) { Console.WriteLine ("Invalid directory"); }
+if (!isValidDir) { WriteLine ("Invalid directory"); }
 if (!allFilesExist) {
-   Console.WriteLine ("One or many required hard code files does not exist.");
+   WriteLine ("One or many required hard code files does not exist.");
 }
 if (!isValidDir || !allFilesExist) {
-   Console.Write ("Do you want to continue with default files (Y/N)?  ");
-   var key = Console.ReadKey ();
-   if (key.Key == ConsoleKey.Y) { rpp.GenOutputFiles ();
+   Write ("Do you want to continue with default files (Y/N)?  ");
+   var key = ReadKey ();
+   if (key.Key == ConsoleKey.Y) { 
+      rpp.GenOutputFiles ();
       WriteLine ("\nFile generated successfully.");
       ReadKey ();
       return; 
@@ -34,8 +36,8 @@ if (!isValidDir || !allFilesExist) {
    }
 }
 
-
-
-rpp.GenOutputFiles (hcDir);
-WriteLine ("File generated successfully.");
-ReadKey ();
+if (hcDir != null) {
+   rpp.GenOutputFiles (hcDir);
+   WriteLine ("File generated successfully.");
+   ReadKey ();
+}

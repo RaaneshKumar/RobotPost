@@ -1,6 +1,4 @@
-﻿using System.Drawing;
-using System.Reflection;
-using System.Runtime.CompilerServices;
+﻿using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -11,6 +9,7 @@ public partial class RobotPost {
       mFilePath = path;
       mFileName = Path.GetFileNameWithoutExtension (path);
       mPositions = [];
+      mOutDirPath = Directory.CreateDirectory (Path.Combine (AppDomain.CurrentDomain.BaseDirectory, mFileName)).FullName;
       mBends = [];
       mRbcSr = new (mFilePath);
    }
@@ -43,14 +42,15 @@ public partial class RobotPost {
             }
             if (rbcLine.Contains ("Post-bend Safe")) isBend = false; // Back to RPP
             if (rbcLine.Contains ("Regrip")) bend.HasRegrip = true;
+            if (rbcLine.Contains ("ClampRegrip")) { bend.HasClampRegrip = true; bend.HasRegrip = false; isBend = true; } // If clamp regrip then continue with bend.
             if (rbcLine.Contains (":JawGripper:"))
                // Gets the gripper type used
-               if (int.TryParse (rbcLine.Substring (14, 1), out int gripperType)) mGripperType = gripperType == 0 ? EGripper.Vacuum : EGripper.Pinch;
+               if (int.TryParse (rbcLine.AsSpan (14, 1), out int gripperType)) mGripperType = gripperType == 0 ? EGripper.Vacuum : EGripper.Pinch;
          } else if (rbcLine.StartsWith ("G01") && pattern.Match (rbcLine) is { Success: true } match) {
             string[] points = jointTags.Select (j => double.Parse (match.Groups[j].Value).ToString ("F2")).ToArray ();
             var motion = rbcLine.Contains ("Forward") ? 'J' : 'L';
             if (isRamPt) mBends[bCount - 1].BendSubPts.Add ((points, motion)); // Collects ram points for each bend.
-            //else (isBend ? bend.Positions : mPositions).Add (new (pCount, points, label, motion)); 
+            // Collects bend points and main ls points
             else {
                Position newPos = new (pCount, points, label, motion);
                if (isBend) {
@@ -64,25 +64,27 @@ public partial class RobotPost {
          } else
             if (isRamPt) mBends[bCount - 1].RamPts.Add (double.Parse (rbcLine));
       }
+      // Remove all duplicates.
+      mPositions = mPositions.GroupBy (x => x.Name).Select (g => g.Last ()).ToList ();
    }
 
-   public void GenOutputFiles (string dir = null) {
+   public void GenOutputFiles (string? dir = null) {
       CollectPositions ();
-      GenMainLS (dir);
+      GenMainLS (mOutDirPath,dir);
       for (int i = 0; i < Bends.Count; i++) {
          var bend = Bends[i];
-         bend.GenBendLS (dir);
-         bend.GenBendSub (dir);
-         bend.GenRamPts ();
+         bend.GenBendLS (mOutDirPath,dir);
+         bend.GenBendSub (mOutDirPath,dir);
+         bend.GenRamPts (mOutDirPath);
       }
    }
 
-   void GenMainLS (string dir) {
+   void GenMainLS (string outDir,string? dir = null) {
       // Collect post bend safe of last bend after which deposit points starts.
-      var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.Name == "Post-bend Safe").LastOrDefault ());
+      var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.Name == "Post-bend Safe").LastOrDefault ()!);
       depositIdx = depositIdx == -1 ? 0 : depositIdx;
       StringBuilder positionsSB = new ();
-      using StreamWriter mainLsSW = new ($"{mFileName}.LS");
+      using StreamWriter mainLsSW = new ($"{outDir}//{mFileName}.LS");
       StreamReader headerSR;
       StreamReader mainLsSR;
 
@@ -98,37 +100,36 @@ public partial class RobotPost {
       // Header part of the hard code
       for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) mainLsSW.WriteLine (header);
 
-      for (int i = 1; ; i++) { // Remaining part of the hard code
+      // Remaining part of the hard code 
+      for (int i = 1; ; i++) {
          var hardCode = mainLsSR.ReadLine ();
          if (hardCode == null) break;
+         // [] - Pickup points
          if (hardCode.StartsWith ('[')) {
-            //int pointIdx = int.Parse (hardCode.Split ('[', ']')[1]) - 1;
-            //var point = mPositions[pointIdx];
             var pointName = hardCode.Split ('[', ']')[1];
-            var point = mPositions.Where (x => x.Name == pointName).First ();
+            var point = mPositions.First (x => x.Name == pointName);
 
-            if (point.PCount != 1) {
-               if (!point.PrevPos.IsWritten) point.CheckAndWritePrevPos (mainLsSW, i);
-            }
+            // Skip if first points else check and and write newly added points.
+            if (point.PCount != 1) if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (mainLsSW, i);
 
             mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
-         } else if (hardCode.StartsWith ('*')) // Sub Bend Program Calls
+         }
+         // * - Sub Bend Program Calls
+         else if (hardCode.StartsWith ('*'))
             for (int j = 1; j <= Bends.Count; j++)
                mainLsSW.WriteLine ($"  {(j == 1 ? i++ : i)}:{(j == 1 ? $"  SELECT R[17]={j},CALL BEND{j}Positioning_sub ;" : $"       ={j},CALL BEND{j}Positioning_sub ;")}");
-         else if (hardCode.StartsWith ('(')) { // Points after deposit
-            //int hcIdx = int.Parse (hardCode.Split ('(', ')')[1]) - 1;
-            //var point = mPositions[depositIdx + hcIdx];
+         // () - Deposit points
+         else if (hardCode.StartsWith ('(')) {
             var pointName = hardCode.Split ('(', ')')[1];
-            var point = mPositions.Where (x => x.Name == pointName).First ();
+            var point = mPositions.First (x => x.Name == pointName);
 
             if (point.PCount != 1) {
-               if (!point.PrevPos.IsWritten) point.CheckAndWritePrevPos (mainLsSW, i);
+               if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (mainLsSW, i);
             }
 
             mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
-            //point.Che
          } else mainLsSW.WriteLine ($"  {i}: {hardCode}");
       }
 
@@ -154,7 +155,7 @@ public partial class RobotPost {
    #endregion
 
    #region Private fields -----------------------------------------
-   string mFileName, mFilePath;
+   string mFileName, mFilePath, mOutDirPath;
    List<Position> mPositions; // Has Pickup and Deposit positions
    List<Bend> mBends;
    StreamReader mRbcSr;
@@ -162,8 +163,6 @@ public partial class RobotPost {
    #endregion
 }
 #endregion
-
-
 
 #region class Bend -----------------------------------------------------------------------------
 public class Bend {
@@ -186,6 +185,11 @@ public class Bend {
       set => mHasRegrip = value;
    }
 
+   public bool HasClampRegrip {
+      get => mHasClampRegrip;
+      set => mHasClampRegrip= value; 
+   }
+
    public List<Position> Positions {
       get => mPositions;
       set => mPositions = value;
@@ -203,9 +207,9 @@ public class Bend {
    #endregion
 
    #region Public methods -----------------------------------------
-   public void GenBendLS (string dir) {
+   public void GenBendLS (string outDir,string? dir = null) {
       StringBuilder positionsSB = new ();
-      using StreamWriter bendLsSW = new ($"Bend{Rank}Positioning_Sub.LS");
+      using StreamWriter bendLsSW = new ($"{outDir}//Bend{Rank}Positioning_Sub.LS");
       bendLsSW.WriteLine ($"/PROG  Bend{Rank}Positioning_sub\n");
       StreamReader headerSR;
       StreamReader bendLsSR;
@@ -228,26 +232,35 @@ public class Bend {
          var hardCode = bendLsSR.ReadLine ();
          if (hardCode == null) break;
          if (hardCode.StartsWith ('[')) {
-            //int pointIdx = int.Parse (hardCode.Split ('[', ']')[1]) - 1;
             var pointName = hardCode.Split ('[', ']')[1];
             if (pointName == "") continue;
-            if (Rank == 1 && (pointName is "Pre-bend Safe" or "Station Front")) continue;
-            var point = mPositions.Where (x=> x.Name == pointName).First ();
-            //var point = Positions[pointIdx];
-
+            if ((Rank == 1 || !mHasRegrip) && (pointName is "Pre-bend Safe" or "Station Front")) continue;
+            var point = mPositions.Where (x => x.Name == pointName).FirstOrDefault ();
+            if (point is null) continue;
             if (point.PCount != firstPos.PCount) {
-               if (!point.PrevPos.IsWritten) point.CheckAndWritePrevPos (bendLsSW, i);
+               if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (bendLsSW, i);
             }
 
             bendLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
-         } else if (hardCode.StartsWith ('*')) { // Bend sub Calls
-            bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
-         } else if (hardCode.StartsWith ('^')) {
-            bendLsSW.WriteLine ($"  {i}:   R[17]={Rank + 1} ;"); // R[17] = 2 for first bend, 3 for second bend...
-         } else {
-            bendLsSW.WriteLine ($"  {i}: {hardCode}");
+
+            // Write all points having clamp regrip after "Post Bend Safe0" point
+            if (mHasClampRegrip && pointName is "Post Bend Safe0") {
+               int idx = mPositions.FindIndex (p => p.Name == "Post Bend Safe0");
+               if (idx != -1) {
+                  for (int j = idx + 1; j < mPositions.Count; j++) {
+                     var pos = mPositions[j];
+                     bendLsSW.WriteLine ($"  {i}: {pos.Motion} P[{pos.PCount}:{pos.Name}] {(pos.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+                     pos.IsWritten = true;
+                  }
+               }
+            }
          }
+         // Bend sub Calls
+         else if (hardCode.StartsWith ('*')) bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
+         // R[17] = 2 for first bend, 3 for second bend...
+         else if (hardCode.StartsWith ('^')) bendLsSW.WriteLine ($"  {i}:   R[17]={Rank + 1} ;");
+         else bendLsSW.WriteLine ($"  {i}: {hardCode}");
       }
 
       for (int i = 0; i < Positions.Count; i++) {
@@ -257,9 +270,9 @@ public class Bend {
       bendLsSW.WriteLine ("/POS\n" + positionsSB + "\n/END");
    }
 
-   public void GenBendSub (string dir) {
+   public void GenBendSub (string outDir, string? dir = null) {
       StringBuilder ramPtsSB = new ();
-      using StreamWriter bendSubSW = new ($"BEND{Rank}SUB.LS");
+      using StreamWriter bendSubSW = new ($"{outDir}//BEND{Rank}SUB.LS");
       bendSubSW.WriteLine ($"/PROG BEND{Rank}SUB\n");
       StreamReader bendSubHcSR;
 
@@ -278,8 +291,8 @@ public class Bend {
       bendSubSW.WriteLine (ramPtsSB + "\n/END");
    }
 
-   public void GenRamPts () {
-      using StreamWriter ramPtsSW = new ($"BEND{Rank}_RamPts.txt");
+   public void GenRamPts (string outDir) {
+      using StreamWriter ramPtsSW = new ($"{outDir}//BEND{Rank}_RamPts.txt");
       for (int i = 0; i < RamPts.Count; i++)
          ramPtsSW.WriteLine (RamPts[i]);
    }
@@ -300,7 +313,7 @@ public class Bend {
    List<(string[] pos, char motion)> mBendSubPts;
    List<double> mRamPts;
    int mRank;
-   bool mHasRegrip;
+   bool mHasRegrip, mHasClampRegrip;
    EGripper mGripperType;
    #endregion
 }
@@ -313,14 +326,12 @@ public class Position {
       mMotion = motion;
       mPCount = pCount;
       mPos = pos;
-      //mPrevPos = new ();
       mName = name;
    }
 
    public Position () {
-      mIsWritten= false;
+      mIsWritten = false;
       mPos = new string[6];
-      //mPrevPos = new ();
       mName = "";
    }
 
@@ -329,7 +340,7 @@ public class Position {
       get => mIsWritten;
       set => mIsWritten = value;
    }
-   
+
    public char Motion => mMotion;
 
    public int PCount => mPCount;
@@ -338,7 +349,7 @@ public class Position {
 
    public string Name => mName;
 
-   public Position PrevPos {
+   public Position? PrevPos {
       get => mPrevPos;
       set => mPrevPos = value;
    }
@@ -349,7 +360,7 @@ public class Position {
    char mMotion;
    int mPCount;
    string[] mPos;
-   Position mPrevPos;
+   Position? mPrevPos;
    string mName;
    #endregion
 }
@@ -358,3 +369,8 @@ public class Position {
 #region Enums ----------------------------------------------------------------------------------
 public enum EGripper { Vacuum, Pinch }
 #endregion
+
+
+// Retract gauges - 2 times in Bend4Positioning
+// Clamp regrip - use NORegrip hardcode 
+// Add other points after postBendSafe0
