@@ -5,13 +5,13 @@ using System.Text.RegularExpressions;
 #region class RobotPost ------------------------------------------------------------------------------
 public partial class RobotPost {
    #region Constructor --------------------------------------------
-   public RobotPost (string path) {
-      mFilePath = path;
-      mFileName = Path.GetFileNameWithoutExtension (path);
+   public RobotPost (string rbcPath) {
+      mRbcPath = rbcPath;
+      mFileName = Path.GetFileNameWithoutExtension (rbcPath);
       mPositions = [];
-      mOutDirPath = Directory.CreateDirectory (Path.Combine (AppDomain.CurrentDomain.BaseDirectory, mFileName)).FullName;
+      mOutDirPath = "";
       mBends = [];
-      mRbcSr = new (mFilePath);
+      mRbcSr = new (mRbcPath);
    }
    #endregion
 
@@ -26,7 +26,7 @@ public partial class RobotPost {
       Regex pattern = MyRegex ();
       string label = "";
       bool isRamPt = false, isBend = false;
-      Bend bend = new (0, mGripperType); // Only for initializing.
+      Bend bend = new (0, mGripperType, mOutDirPath); // Only for initializing.
 
       for (int i = 0; ; i++) {
          string? rbcLine = mRbcSr.ReadLine ();
@@ -36,25 +36,25 @@ public partial class RobotPost {
          if (rbcLine.StartsWith ('(')) {
             if (mRbcSr.Peek () != '(') label = ++pCount == 1 ? "Init" : rbcLine[1..^1];
             if (rbcLine.StartsWith ("(-") && rbcLine.Contains ("Bend ")) { // Starts collecting points in Bend object.
-               bend = new (++bCount, mGripperType);
+               bend = new (++bCount, mGripperType, mOutDirPath);
                isBend = true;
                mBends.Add (bend);
             }
             if (rbcLine.Contains ("Post-bend Safe")) isBend = false; // Back to RPP
             if (rbcLine.Contains ("Regrip")) bend.HasRegrip = true;
-            if (rbcLine.Contains ("ClampRegrip")) { bend.HasClampRegrip = true; bend.HasRegrip = false; isBend = true; } // If clamp regrip then continue with bend.
-            if (rbcLine.Contains (":JawGripper:"))
-               // Gets the gripper type used
+            // If clamp regrip then continue with bend.
+            if (rbcLine.Contains ("ClampRegrip")) { bend.HasClampRegrip = true; bend.HasRegrip = false; isBend = true; } 
+            if (rbcLine.Contains (":JawGripper:")) // Gets the gripper type used
                if (int.TryParse (rbcLine.AsSpan (14, 1), out int gripperType)) mGripperType = gripperType == 0 ? EGripper.Vacuum : EGripper.Pinch;
          } else if (rbcLine.StartsWith ("G01") && pattern.Match (rbcLine) is { Success: true } match) {
             string[] points = jointTags.Select (j => double.Parse (match.Groups[j].Value).ToString ("F2")).ToArray ();
             var motion = rbcLine.Contains ("Forward") ? 'J' : 'L';
             if (isRamPt) mBends[bCount - 1].BendSubPts.Add ((points, motion)); // Collects ram points for each bend.
-            // Collects bend points and main ls points
+            // Collects bend positions and main ls positions.
             else {
                Position newPos = new (pCount, points, label, motion);
                if (isBend) {
-                  if (bend.Positions.Count != 0) newPos.PrevPos = bend.Positions[^1];
+                  if (bend.Positions.Count != 0) newPos.PrevPos = bend.Positions[^1]; // Each position stores data of its previous position.
                   bend.Positions.Add (newPos);
                } else {
                   if (mPositions.Count != 0) newPos.PrevPos = mPositions[^1];
@@ -64,29 +64,22 @@ public partial class RobotPost {
          } else
             if (isRamPt) mBends[bCount - 1].RamPts.Add (double.Parse (rbcLine));
       }
-      // Remove all duplicates.
+
+      // To remove dulplicates of PostBendSafe positions as we require only the last
+      // post-bend safe position to be written in the output file.
       mPositions = mPositions.GroupBy (x => x.Name).Select (g => g.Last ()).ToList ();
    }
 
-   public void GenOutputFiles (string? dir = null) {
-      CollectPositions ();
-      GenMainLS (mOutDirPath,dir);
-      for (int i = 0; i < Bends.Count; i++) {
-         var bend = Bends[i];
-         bend.GenBendLS (mOutDirPath,dir);
-         bend.GenBendSub (mOutDirPath,dir);
-         bend.GenRamPts (mOutDirPath);
-      }
-   }
+   // Creates an output directory by getting the directory of the exe file.
+   void CreateOutDir () => mOutDirPath = Directory.CreateDirectory (Path.Combine (Path.GetDirectoryName (Assembly.GetExecutingAssembly ().Location)!, mFileName)).FullName;
 
-   void GenMainLS (string outDir,string? dir = null) {
+   void GenMainLS (string? dir = null) {
       // Collect post bend safe of last bend after which deposit points starts.
       var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.Name == "Post-bend Safe").LastOrDefault ()!);
       depositIdx = depositIdx == -1 ? 0 : depositIdx;
       StringBuilder positionsSB = new ();
-      using StreamWriter mainLsSW = new ($"{outDir}//{mFileName}.LS");
-      StreamReader headerSR;
-      StreamReader mainLsSR;
+      using StreamWriter mainLsSW = new ($"{mOutDirPath}//{mFileName}.LS");
+      StreamReader headerSR, mainLsSR;
 
       if (dir != null) {
          headerSR = new ($"{dir}/Header.txt");
@@ -104,30 +97,30 @@ public partial class RobotPost {
       for (int i = 1; ; i++) {
          var hardCode = mainLsSR.ReadLine ();
          if (hardCode == null) break;
+
          // [] - Pickup points
          if (hardCode.StartsWith ('[')) {
             var pointName = hardCode.Split ('[', ']')[1];
             var point = mPositions.First (x => x.Name == pointName);
-
-            // Skip if first points else check and and write newly added points.
+            // Skip if first position else check and and write newly added positions.
             if (point.PCount != 1) if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (mainLsSW, i);
-
             mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
          }
-         // * - Sub Bend Program Calls
+
+         // * - Bend positioning program calls for each bend.
          else if (hardCode.StartsWith ('*'))
             for (int j = 1; j <= Bends.Count; j++)
                mainLsSW.WriteLine ($"  {(j == 1 ? i++ : i)}:{(j == 1 ? $"  SELECT R[17]={j},CALL BEND{j}Positioning_sub ;" : $"       ={j},CALL BEND{j}Positioning_sub ;")}");
+
          // () - Deposit points
          else if (hardCode.StartsWith ('(')) {
             var pointName = hardCode.Split ('(', ')')[1];
             var point = mPositions.First (x => x.Name == pointName);
-
-            if (point.PCount != 1) {
+            // First point does not have any previous position.
+            if (point.PCount != 1) { 
                if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (mainLsSW, i);
             }
-
             mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
          } else mainLsSW.WriteLine ($"  {i}: {hardCode}");
@@ -138,6 +131,18 @@ public partial class RobotPost {
          WriteToSB (positionsSB, position.Pos, position.PCount, position.Name);
       }
       mainLsSW.WriteLine ("/POS\n" + positionsSB + "\n/END");
+   }
+
+   public void GenOutputFiles (string? hcDir = null) {
+      CreateOutDir ();
+      CollectPositions ();
+      GenMainLS (hcDir);
+      for (int i = 0; i < Bends.Count; i++) {
+         var bend = Bends[i];
+         bend.GenBendLS (hcDir);
+         bend.GenBendSub (hcDir);
+         bend.GenRamPts ();
+      }
    }
 
    // Writes the positions to the required string builder. 
@@ -155,7 +160,7 @@ public partial class RobotPost {
    #endregion
 
    #region Private fields -----------------------------------------
-   string mFileName, mFilePath, mOutDirPath;
+   string mFileName, mRbcPath, mOutDirPath;
    List<Position> mPositions; // Has Pickup and Deposit positions
    List<Bend> mBends;
    StreamReader mRbcSr;
@@ -166,14 +171,14 @@ public partial class RobotPost {
 
 #region class Bend -----------------------------------------------------------------------------
 public class Bend {
-
    #region Constructor --------------------------------------------
-   public Bend (int rank, EGripper gripperType) {
+   public Bend (int rank, EGripper gripperType, string outDirPath) {
       mRank = rank;
       mPositions = [];
       mBendSubPts = [];
       mRamPts = [];
       mGripperType = gripperType;
+      mOutDirPath = outDirPath;
    }
    #endregion
 
@@ -187,7 +192,7 @@ public class Bend {
 
    public bool HasClampRegrip {
       get => mHasClampRegrip;
-      set => mHasClampRegrip= value; 
+      set => mHasClampRegrip = value; 
    }
 
    public List<Position> Positions {
@@ -207,25 +212,24 @@ public class Bend {
    #endregion
 
    #region Public methods -----------------------------------------
-   public void GenBendLS (string outDir,string? dir = null) {
+   public void GenBendLS (string? hcDir = null) {
       StringBuilder positionsSB = new ();
-      using StreamWriter bendLsSW = new ($"{outDir}//Bend{Rank}Positioning_Sub.LS");
+      using StreamWriter bendLsSW = new ($"{mOutDirPath}//Bend{Rank}Positioning_Sub.LS");
       bendLsSW.WriteLine ($"/PROG  Bend{Rank}Positioning_sub\n");
-      StreamReader headerSR;
-      StreamReader bendLsSR;
+      StreamReader headerSR, bendLsSR;
 
-      if (dir != null) {
-         headerSR = new ($"{dir}/Header.txt");
-         bendLsSR = new ($"{dir}/{(HasRegrip ? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}");
+      if (hcDir != null) {
+         headerSR = new ($"{hcDir}/Header.txt");
+         bendLsSR = new ($"{hcDir}/{(HasRegrip ? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}");
       } 
       else {
          headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
          bendLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.{(HasRegrip ? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}")!);
       }
-      
 
       var firstPos = mPositions[0];
-      for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ())// Header part of the hard code
+      // Header part of the hard code
+      for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) 
          bendLsSW.WriteLine (header);
 
       for (int i = 1; ; i++) { // Remaining part of the hard code
@@ -244,7 +248,7 @@ public class Bend {
             bendLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
 
-            // Write all points having clamp regrip after "Post Bend Safe0" point
+            // Write all psoitions having clamp regrip after "Post Bend Safe0".
             if (mHasClampRegrip && pointName is "Post Bend Safe0") {
                int idx = mPositions.FindIndex (p => p.Name == "Post Bend Safe0");
                if (idx != -1) {
@@ -256,7 +260,7 @@ public class Bend {
                }
             }
          }
-         // Bend sub Calls
+         // * - Calls bend sub programs
          else if (hardCode.StartsWith ('*')) bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
          // R[17] = 2 for first bend, 3 for second bend...
          else if (hardCode.StartsWith ('^')) bendLsSW.WriteLine ($"  {i}:   R[17]={Rank + 1} ;");
@@ -270,19 +274,20 @@ public class Bend {
       bendLsSW.WriteLine ("/POS\n" + positionsSB + "\n/END");
    }
 
-   public void GenBendSub (string outDir, string? dir = null) {
+   public void GenBendSub (string? hcDir = null) {
       StringBuilder ramPtsSB = new ();
-      using StreamWriter bendSubSW = new ($"{outDir}//BEND{Rank}SUB.LS");
+      using StreamWriter bendSubSW = new ($"{mOutDirPath}//BEND{Rank}SUB.LS");
       bendSubSW.WriteLine ($"/PROG BEND{Rank}SUB\n");
       StreamReader bendSubHcSR;
 
-      if (dir != null) {
-         bendSubHcSR = new ($"{dir}/BendSub_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt");
+      if (hcDir != null) {
+         bendSubHcSR = new ($"{hcDir}/BendSub_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt");
       } else {
          bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.BendSub_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
       }
 
-      for (string? hardCode = bendSubHcSR.ReadLine (); hardCode != null; hardCode = bendSubHcSR.ReadLine ()) // Header part of the hard code
+      // Header part of the hard code
+      for (string? hardCode = bendSubHcSR.ReadLine (); hardCode != null; hardCode = bendSubHcSR.ReadLine ()) 
          bendSubSW.WriteLine (hardCode);
       for (int i = 0; i < BendSubPts.Count; i++) {
          var ramPt = BendSubPts[i];
@@ -291,8 +296,8 @@ public class Bend {
       bendSubSW.WriteLine (ramPtsSB + "\n/END");
    }
 
-   public void GenRamPts (string outDir) {
-      using StreamWriter ramPtsSW = new ($"{outDir}//BEND{Rank}_RamPts.txt");
+   public void GenRamPts () {
+      using StreamWriter ramPtsSW = new ($"{mOutDirPath}//BEND{Rank}_RamPts.txt");
       for (int i = 0; i < RamPts.Count; i++)
          ramPtsSW.WriteLine (RamPts[i]);
    }
@@ -315,6 +320,7 @@ public class Bend {
    int mRank;
    bool mHasRegrip, mHasClampRegrip;
    EGripper mGripperType;
+   string mOutDirPath;
    #endregion
 }
 #endregion
@@ -369,8 +375,3 @@ public class Position {
 #region Enums ----------------------------------------------------------------------------------
 public enum EGripper { Vacuum, Pinch }
 #endregion
-
-
-// Retract gauges - 2 times in Bend4Positioning
-// Clamp regrip - use NORegrip hardcode 
-// Add other points after postBendSafe0

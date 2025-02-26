@@ -1,43 +1,50 @@
-﻿using System.Net.WebSockets;
-using static System.Console;
+﻿using static System.Console;
 
-//if (args.Length == 0) { WriteLine ("no input!"); ReadKey (); return; }
-//var rpp = new RobotPost (args[0]);
-var rpp = new RobotPost ("C:\\Users\\nehrujiaj\\Downloads\\BOX8Bends.rbc");
+if (args.Length == 0) { WriteLine ("no input!"); ReadKey (); return; }
+var rpp = new RobotPost (args[0]); // Gets the rbc file from Flux as input.
 
 Write ("Enter the hard code files directory: ");
 string? hcDir = ReadLine ();
 bool isValidDir = Directory.Exists (hcDir);
 bool allFilesExist = File.Exists (hcDir + "/BendLS_NoRegripHC.txt")
-     && File.Exists (hcDir + "/BendLS_RegripHC.txt")
-     && File.Exists (hcDir + "/BendSub_HC(PG).txt")
-     && File.Exists (hcDir + "/BendSub_HC(VG).txt")
-     && File.Exists (hcDir + "/Header.txt")
-     && File.Exists (hcDir + "/MainLS_HC(PG).txt")
-     && File.Exists (hcDir + "/MainLS_HC(VG).txt");
+                  && File.Exists (hcDir + "/BendLS_RegripHC.txt")
+                  && File.Exists (hcDir + "/BendSub_HC(PG).txt")
+                  && File.Exists (hcDir + "/BendSub_HC(VG).txt")
+                  && File.Exists (hcDir + "/Header.txt")
+                  && File.Exists (hcDir + "/MainLS_HC(PG).txt")
+                  && File.Exists (hcDir + "/MainLS_HC(VG).txt");
 
-if (!isValidDir) { WriteLine ("Invalid directory"); }
-if (!allFilesExist) {
+// Invalid hard code files.
+if (!isValidDir) {
+   WriteLine ("Invalid directory");
+   CheckToContinue ();
+   return;
+}
+if (isValidDir && !allFilesExist) {
    WriteLine ("One or many required hard code files does not exist.");
-}
-if (!isValidDir || !allFilesExist) {
-   Write ("Do you want to continue with default files (Y/N)?  ");
-   var key = ReadKey ();
-   if (key.Key == ConsoleKey.Y) { 
-      rpp.GenOutputFiles ();
-      WriteLine ("\nFile generated successfully.");
-      ReadKey ();
-      return; 
-   }
-   else {
-      WriteLine ("\nNo files generated.");
-      ReadKey ();
-      return;
-   }
+   CheckToContinue () ;
+   return;
 }
 
+// Valid hard code files.
 if (hcDir != null) {
    rpp.GenOutputFiles (hcDir);
-   WriteLine ("File generated successfully.");
+   PrintToConsole ("\nFiles generated successfully.");
+   return;
+}
+
+#region Methods ------------------------------------------------
+void PrintToConsole (string msg) {
+   WriteLine (msg);
    ReadKey ();
 }
+
+// Asks the user whether to continue with the default hard code files and executes them.
+void CheckToContinue () {
+   Write ("Do you want to continue with default files (Y/N)?  ");
+   if (ReadKey ().Key == ConsoleKey.Y) {
+      rpp.GenOutputFiles ();
+      PrintToConsole ("\nFiles generated successfully.");
+   } else PrintToConsole ("\nNo files generated."); 
+}
+#endregion
