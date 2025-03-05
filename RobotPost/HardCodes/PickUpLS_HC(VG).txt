@@ -1,0 +1,39 @@
+If (R[18:GripperType]=0);
+[Init]
+J P[23] 100% CNT100    ;
+[Approach]
+  LBL[50:Stack Search];
+  SKIP CONDITION DI[10]=ON;
+[Contact]
+  DO[9:Vacuum_GripON\OFF]=OFF ;
+[Separate]
+[Lift Clear]
+[Aloft]
+JMP LBL[1];
+ENDIF;
+;
+If (R[18:GripperType]=1);
+DO[500:GRIP_OPEN]=ON; 
+DO[499:GRIP_CLOSE]=OFF;
+[Init]
+[Pick Safe]
+  //WAIT (DI[13:GRIPPER_OPEN_FB])    ;
+  WAIT   1.50(sec) ;				 
+[Height]
+[Jaw Open]
+[Jaw Close]
+  DO[500:GRIP_OPEN]=OFF;
+  DO[499:GRIP_CLOSE]=ON;
+  WAIT 0.25(sec);
+  //WAIT (DI[14:GRIPPER_CLOSE_FB])    ;
+  R[28]=2;	  
+[Separate]
+[Pull Clear]
+[Safe.2]
+  UFRAME_NUM=2 ;
+[Aloft]
+  R[28]=1;	  
+  JMP LBL[1];
+  ;
+  ENDIF;`
+  LBL[1];

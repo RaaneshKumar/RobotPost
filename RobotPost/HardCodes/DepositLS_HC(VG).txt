@@ -1,0 +1,7 @@
+(Post-bend Safe)
+(Drop Approach)
+  DO[9:Vacuum_GripON\OFF]=ON ;
+  R[15:SPD_J]=100    ;
+(Retreat)
+(Retreat.2)
+(Drop Retreat3)

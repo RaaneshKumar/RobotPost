@@ -73,6 +73,11 @@ public partial class RobotPost {
    // Creates an output directory by getting the directory of the exe file.
    void CreateOutDir () => mOutDirPath = Directory.CreateDirectory (Path.Combine (Path.GetDirectoryName (Assembly.GetExecutingAssembly ().Location)!, mFileName)).FullName;
 
+   // Generates a separate .LS file for deposit.
+   void GenDepositLS () {
+
+   }
+
    void GenMainLS (string? dir = null) {
       // Collect post bend safe of last bend after which deposit points starts.
       var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.Name == "Post-bend Safe").LastOrDefault ()!);
@@ -123,7 +128,20 @@ public partial class RobotPost {
             }
             mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
-         } else mainLsSW.WriteLine ($"  {i}: {hardCode}");
+         } 
+         
+         // <> - Pickup and Deposit program calls
+         else if (hardCode.StartsWith ('<')) {
+            var subProgName = hardCode.Split ('<', '>')[1];
+            if (subProgName == "Call Pickup") {
+               mainLsSW.WriteLine ($"  {i}: Call Sub_PickUp;");
+               GenPickupLS ();
+            } else {
+               mainLsSW.WriteLine ($"  {i}: Call Sub_Deposit;");
+               GenDepositLS ();
+            }
+         }
+         else mainLsSW.WriteLine ($"  {i}: {hardCode}");
       }
 
       for (int i = 0; i < mPositions.Count; i++) {
@@ -137,12 +155,19 @@ public partial class RobotPost {
       CreateOutDir ();
       CollectPositions ();
       GenMainLS (hcDir);
+      GenPickupLS ();
+      GenDepositLS ();
       for (int i = 0; i < Bends.Count; i++) {
          var bend = Bends[i];
          bend.GenBendLS (hcDir);
          bend.GenBendSub (hcDir);
          bend.GenRamPts ();
       }
+   }
+
+   // Generates a separate .LS file for pickup.
+   void GenPickupLS () {
+
    }
 
    // Writes the positions to the required string builder. 
