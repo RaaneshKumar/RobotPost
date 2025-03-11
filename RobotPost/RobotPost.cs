@@ -43,7 +43,7 @@ public partial class RobotPost {
             if (rbcLine.Contains ("Post-bend Safe")) isBend = false; // Back to RPP
             if (rbcLine.Contains ("Regrip")) bend.HasRegrip = true;
             // If clamp regrip then continue with bend.
-            if (rbcLine.Contains ("ClampRegrip")) { bend.HasClampRegrip = true; bend.HasRegrip = false; isBend = true; } 
+            if (rbcLine.Contains ("ClampRegrip")) { bend.HasClampRegrip = true; bend.HasRegrip = false; isBend = true; }
             if (rbcLine.Contains (":JawGripper:")) // Gets the gripper type used
                if (int.TryParse (rbcLine.AsSpan (14, 1), out int gripperType)) mGripperType = gripperType == 0 ? EGripper.Vacuum : EGripper.Pinch;
          } else if (rbcLine.StartsWith ("G01") && pattern.Match (rbcLine) is { Success: true } match) {
@@ -74,8 +74,52 @@ public partial class RobotPost {
    void CreateOutDir () => mOutDirPath = Directory.CreateDirectory (Path.Combine (Path.GetDirectoryName (Assembly.GetExecutingAssembly ().Location)!, mFileName)).FullName;
 
    // Generates a separate .LS file for deposit.
-   void GenDepositLS () {
+   void GenDepositLS (string? hcDir = null) {
+      StreamReader headerSR, depositLsSR;
+      using StreamWriter depositLsSW = new ($"{mOutDirPath}//Deposit.LS");
+      bool isVacuum = false;
 
+      if (hcDir != null) {
+         headerSR = new ($"{hcDir}/Header.txt");
+         depositLsSR = new ($"{hcDir}/DepositLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt");
+      } else {
+         headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
+         depositLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.DepositLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
+      }
+
+      // Header part of the hard code
+      for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) depositLsSW.WriteLine (header);
+
+      // Remaining part of the hard code 
+      for (int i = 1; ; i++) {
+         var hardCode = depositLsSR.ReadLine ();
+         if (hardCode == null) break;
+
+         if (hardCode.StartsWith ('<')) {
+            var gripper = hardCode.Split ('<', '>')[1];
+            if (gripper == "Vacuum") isVacuum = true;
+            else { isVacuum = false; i = 1; }
+            i--; // Since we are skipping that line.
+            continue;
+         }
+
+         // Skips the other gripper's hardcode part.
+         if (hardCode == "" || (mGripperType == EGripper.Pinch && isVacuum) || (mGripperType == EGripper.Vacuum && !isVacuum)) continue;
+
+
+         if (hardCode.StartsWith ('(')) {
+            var pointName = hardCode.Split ('(', ')')[1];
+            var point = mPositions.First (x => x.Name == pointName);
+            // First point does not have any previous position.
+            if (point.PCount != 1) {
+               if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (depositLsSW, i);
+            }
+            depositLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+            point.IsWritten = true;
+         } else {
+            depositLsSW.WriteLine ($"  {i}: {hardCode}");
+         }
+      }
    }
 
    void GenMainLS (string? dir = null) {
@@ -91,7 +135,7 @@ public partial class RobotPost {
          mainLsSR = new ($"{dir}/MainLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt");
       } else {
          headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
-         mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.MainLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!); 
+         mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.MainLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
       }
 
       mainLsSW.WriteLine ($"/PROG  {mFileName}\n");
@@ -104,17 +148,17 @@ public partial class RobotPost {
          if (hardCode == null) break;
 
          // [] - Pickup points
-         if (hardCode.StartsWith ('[')) {
-            var pointName = hardCode.Split ('[', ']')[1];
-            var point = mPositions.First (x => x.Name == pointName);
-            // Skip if first position else check and and write newly added positions.
-            if (point.PCount != 1) if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (mainLsSW, i);
-            mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
-            point.IsWritten = true;
-         }
+         //if (hardCode.StartsWith ('[')) {
+         //   var pointName = hardCode.Split ('[', ']')[1];
+         //   var point = mPositions.First (x => x.Name == pointName);
+         //   // Skip if first position else check and and write newly added positions.
+         //   if (point.PCount != 1) if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (mainLsSW, i);
+         //   mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+         //   point.IsWritten = true;
+         //}
 
          // * - Bend positioning program calls for each bend.
-         else if (hardCode.StartsWith ('*'))
+         if (hardCode.StartsWith ('*'))
             for (int j = 1; j <= Bends.Count; j++)
                mainLsSW.WriteLine ($"  {(j == 1 ? i++ : i)}:{(j == 1 ? $"  SELECT R[17]={j},CALL BEND{j}Positioning_sub ;" : $"       ={j},CALL BEND{j}Positioning_sub ;")}");
 
@@ -123,24 +167,25 @@ public partial class RobotPost {
             var pointName = hardCode.Split ('(', ')')[1];
             var point = mPositions.First (x => x.Name == pointName);
             // First point does not have any previous position.
-            if (point.PCount != 1) { 
+            if (point.PCount != 1) {
                if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (mainLsSW, i);
             }
             mainLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
-         } 
-         
-         // <> - Pickup and Deposit program calls
-         else if (hardCode.StartsWith ('<')) {
-            var subProgName = hardCode.Split ('<', '>')[1];
-            if (subProgName == "Call Pickup") {
-               mainLsSW.WriteLine ($"  {i}: Call Sub_PickUp;");
-               GenPickupLS ();
-            } else {
-               mainLsSW.WriteLine ($"  {i}: Call Sub_Deposit;");
-               GenDepositLS ();
-            }
          }
+
+         //// <> - Pickup and Deposit program calls
+         //else if (hardCode.StartsWith ('<')) {
+         //   var subProgName = hardCode.Split ('<', '>')[1];
+         //   if (subProgName == "Call Pickup") {
+         //      mainLsSW.WriteLine ($"  {i}: Call Sub_PickUp;");
+         //      GenPickupLS ();
+         //   } else {
+         //      mainLsSW.WriteLine ($"  {i}: Call Sub_Deposit;");
+         //      GenDepositLS ();
+         //   }
+         //}
+
          else mainLsSW.WriteLine ($"  {i}: {hardCode}");
       }
 
@@ -155,8 +200,8 @@ public partial class RobotPost {
       CreateOutDir ();
       CollectPositions ();
       GenMainLS (hcDir);
-      GenPickupLS ();
-      GenDepositLS ();
+      GenPickupLS (hcDir);
+      GenDepositLS (hcDir);
       for (int i = 0; i < Bends.Count; i++) {
          var bend = Bends[i];
          bend.GenBendLS (hcDir);
@@ -166,8 +211,49 @@ public partial class RobotPost {
    }
 
    // Generates a separate .LS file for pickup.
-   void GenPickupLS () {
+   void GenPickupLS (string? hcDir = null) {
+      StreamReader headerSR, pickupLsSR;
+      using StreamWriter pickupLsSW = new ($"{mOutDirPath}//Pickup.LS");
+      bool isVacuum = false;
 
+      if (hcDir != null) {
+         headerSR = new ($"{hcDir}/Header.txt");
+         pickupLsSR = new ($"{hcDir}/PickUpLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt");
+      } else {
+         headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
+         pickupLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.PickUpLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
+      }
+
+      // Header part of the hard code
+      for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) pickupLsSW.WriteLine (header);
+
+      // Remaining part of the hard code 
+      for (int i = 1; ; i++) {
+         var hardCode = pickupLsSR.ReadLine ();
+         if (hardCode == null) break;
+
+         if (hardCode.StartsWith ('<')) {
+            var gripper = hardCode.Split ('<', '>')[1];
+            if (gripper == "Vacuum") isVacuum = true;
+            else { isVacuum = false; i = 1; }
+            i--; // Since we are skipping that line.
+            continue;
+         }
+
+         // Skips the other gripper's hardcode part.
+         if (hardCode == "" || (mGripperType == EGripper.Pinch && isVacuum) || (mGripperType == EGripper.Vacuum && !isVacuum)) continue;
+
+         if (hardCode.StartsWith ('[')) {
+            var pointName = hardCode.Split ('[', ']')[1];
+            var point = mPositions.First (x => x.Name == pointName);
+            // Skip if first position else check and and write newly added positions.
+            if (point.PCount != 1) if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (pickupLsSW, i);
+            pickupLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+            point.IsWritten = true;
+         } else {
+            pickupLsSW.WriteLine ($"  {i}: {hardCode}");
+         }
+      }
    }
 
    // Writes the positions to the required string builder. 
@@ -217,7 +303,7 @@ public class Bend {
 
    public bool HasClampRegrip {
       get => mHasClampRegrip;
-      set => mHasClampRegrip = value; 
+      set => mHasClampRegrip = value;
    }
 
    public List<Position> Positions {
@@ -246,18 +332,18 @@ public class Bend {
       if (hcDir != null) {
          headerSR = new ($"{hcDir}/Header.txt");
          bendLsSR = new ($"{hcDir}/{(HasRegrip ? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}");
-      } 
-      else {
+      } else {
          headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
          bendLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.{(HasRegrip ? "BendLS_RegripHC.txt" : "BendLS_NoRegripHC.txt")}")!);
       }
 
       var firstPos = mPositions[0];
       // Header part of the hard code
-      for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) 
+      for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ())
          bendLsSW.WriteLine (header);
 
-      for (int i = 1; ; i++) { // Remaining part of the hard code
+      // Remaining part of the hard code
+      for (int i = 1; ; i++) {
          var hardCode = bendLsSR.ReadLine ();
          if (hardCode == null) break;
          if (hardCode.StartsWith ('[')) {
@@ -312,7 +398,7 @@ public class Bend {
       }
 
       // Header part of the hard code
-      for (string? hardCode = bendSubHcSR.ReadLine (); hardCode != null; hardCode = bendSubHcSR.ReadLine ()) 
+      for (string? hardCode = bendSubHcSR.ReadLine (); hardCode != null; hardCode = bendSubHcSR.ReadLine ())
          bendSubSW.WriteLine (hardCode);
       for (int i = 0; i < BendSubPts.Count; i++) {
          var ramPt = BendSubPts[i];

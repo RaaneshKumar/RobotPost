@@ -1,3 +1,4 @@
+<Vacuum>
 If (R[18:GripperType]=0);
 [Init]
 J P[23] 100% CNT100    ;
@@ -12,6 +13,8 @@ J P[23] 100% CNT100    ;
 JMP LBL[1];
 ENDIF;
 ;
+
+<Pinch>
 If (R[18:GripperType]=1);
 DO[500:GRIP_OPEN]=ON; 
 DO[499:GRIP_CLOSE]=OFF;
@@ -35,5 +38,5 @@ DO[499:GRIP_CLOSE]=OFF;
   R[28]=1;	  
   JMP LBL[1];
   ;
-  ENDIF;`
+  ENDIF;
   LBL[1];

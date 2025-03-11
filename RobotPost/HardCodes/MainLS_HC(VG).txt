@@ -20,7 +20,7 @@
      ;
     LBL[2:PartPickup&Initialize] ;
 	If (DI[51:ECAT_FirstBendActive] or (DI[51:ECAT_FirstBendActive] AND DI[52:ECAT_LastBendActive]));
-  <Call Pickup>
+    Call Sub_PickUp;
 	ENDIF;
     IF (DO[51:ECAT_MoveToUDP] OR DI[51:ECAT_FirstBendActive] AND !DI[57:ECAT_UDP_Reached]) THEN ;
     R[10]=2    ;
@@ -62,7 +62,7 @@
     ENDIF ;
     ENDIF ;
     LBL[8:TODEPOSIT] ;
-  <Call Deposit>
+    Call Sub_Deposit;
     R[10]=1    ;
     JMP LBL[9] ;
     LBL[9:HomeState] ;

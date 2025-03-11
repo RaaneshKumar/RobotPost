@@ -1,7 +1,7 @@
 ﻿using static System.Console;
 
-if (args.Length == 0) { WriteLine ("no input!"); ReadKey (); return; }
-var rpp = new RobotPost (args[0]); // Gets the rbc file from Flux as input.
+//if (args.Length == 0) { WriteLine ("no input!"); ReadKey (); return; }
+var rpp = new RobotPost ("C:\\Users\\rajakumarra\\Downloads\\BOX8Bends 1.rbc"); // Gets the rbc file from Flux as input.
 
 Write ("Enter the hard code files directory: ");
 string? hcDir = ReadLine ();
@@ -11,8 +11,9 @@ bool allFilesExist = File.Exists (hcDir + "/BendLS_NoRegripHC.txt")
                   && File.Exists (hcDir + "/BendSub_HC(PG).txt")
                   && File.Exists (hcDir + "/BendSub_HC(VG).txt")
                   && File.Exists (hcDir + "/Header.txt")
-                  && File.Exists (hcDir + "/MainLS_HC(PG).txt")
-                  && File.Exists (hcDir + "/MainLS_HC(VG).txt");
+                  && File.Exists (hcDir + "/MainLS_HC(VG).txt")
+                  && File.Exists (hcDir + "/DepositLS_HC(VG).txt")
+                  && File.Exists (hcDir + "/PickUpLS_HC(VG).txt");
 
 // Invalid hard code files.
 if (!isValidDir) {
