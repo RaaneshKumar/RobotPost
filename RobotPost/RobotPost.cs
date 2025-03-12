@@ -75,6 +75,7 @@ public partial class RobotPost {
 
    // Generates a separate .LS file for deposit.
    void GenDepositLS (string? hcDir = null) {
+      StringBuilder positionsSB = new ();
       StreamReader headerSR, depositLsSR;
       using StreamWriter depositLsSW = new ($"{mOutDirPath}//Deposit.LS");
       bool isVacuum = false;
@@ -120,6 +121,12 @@ public partial class RobotPost {
             depositLsSW.WriteLine ($"  {i}: {hardCode}");
          }
       }
+
+      for (int i = 0; i < mPositions.Count; i++) {
+         var position = mPositions[i];
+         WriteToSB (positionsSB, position.Pos, position.PCount, position.Name);
+      }
+      depositLsSW.WriteLine ("/POS\n" + positionsSB + "\n/END");
    }
 
    void GenMainLS (string? dir = null) {
@@ -212,6 +219,7 @@ public partial class RobotPost {
 
    // Generates a separate .LS file for pickup.
    void GenPickupLS (string? hcDir = null) {
+      StringBuilder positionsSB = new ();
       StreamReader headerSR, pickupLsSR;
       using StreamWriter pickupLsSW = new ($"{mOutDirPath}//Pickup.LS");
       bool isVacuum = false;
@@ -254,6 +262,12 @@ public partial class RobotPost {
             pickupLsSW.WriteLine ($"  {i}: {hardCode}");
          }
       }
+
+      for (int i = 0; i < mPositions.Count; i++) {
+         var position = mPositions[i];
+         WriteToSB (positionsSB, position.Pos, position.PCount, position.Name);
+      }
+      pickupLsSW.WriteLine ("/POS\n" + positionsSB + "\n/END");
    }
 
    // Writes the positions to the required string builder. 

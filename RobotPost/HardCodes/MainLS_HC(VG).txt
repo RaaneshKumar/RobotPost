@@ -72,5 +72,5 @@
     DO[52:ECAT_StepChange]=OFF ;
     DO[54:ECAT_EnableRamDown]=OFF ;
     DO[53:ECAT_StartProgram]=OFF ;
-  (Home)
+(Home)
     JMP LBL[100] ;
