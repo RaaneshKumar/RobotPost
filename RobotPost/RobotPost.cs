@@ -82,10 +82,10 @@ public partial class RobotPost {
 
       if (hcDir != null) {
          headerSR = new ($"{hcDir}/Header.txt");
-         depositLsSR = new ($"{hcDir}/DepositLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt");
+         depositLsSR = new ($"{hcDir}/DepositLS_HC.txt");
       } else {
          headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
-         depositLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.DepositLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
+         depositLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.DepositLS_HC.txt")!);
       }
 
       // Header part of the hard code
@@ -226,10 +226,10 @@ public partial class RobotPost {
 
       if (hcDir != null) {
          headerSR = new ($"{hcDir}/Header.txt");
-         pickupLsSR = new ($"{hcDir}/PickUpLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt");
+         pickupLsSR = new ($"{hcDir}/PickUpLS_HC.txt");
       } else {
          headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
-         pickupLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.PickUpLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
+         pickupLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.PickUpLS_HC.txt")!);
       }
 
       // Header part of the hard code

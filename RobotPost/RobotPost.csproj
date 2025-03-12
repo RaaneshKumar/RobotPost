@@ -12,11 +12,9 @@
     <None Remove="HardCodes\BendLS_RegripHC.txt" />
     <None Remove="HardCodes\BendSub_HC%28PG%29.txt" />
     <None Remove="HardCodes\BendSub_HC(VG).txt" />
-    <None Remove="HardCodes\DepositLS_HC%28VG%29.txt" />
     <None Remove="HardCodes\Header.txt" />
     <None Remove="HardCodes\MainLS_HC%28PG%29.txt" />
     <None Remove="HardCodes\MainLS_HC(VG).txt" />
-    <None Remove="HardCodes\PickUpLS_HC%28VG%29.txt" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,10 +22,10 @@
     <EmbeddedResource Include="HardCodes\BendLS_RegripHC.txt" />
     <EmbeddedResource Include="HardCodes\BendSub_HC%28VG%29.txt" />
     <EmbeddedResource Include="HardCodes\BendSub_HC(PG).txt" />
-    <EmbeddedResource Include="HardCodes\DepositLS_HC(VG).txt" />
+    <EmbeddedResource Include="HardCodes\DepositLS_HC.txt" />
     <EmbeddedResource Include="HardCodes\Header.txt" />
     <EmbeddedResource Include="HardCodes\MainLS_HC%28VG%29.txt" />
-    <EmbeddedResource Include="HardCodes\PickUpLS_HC(VG).txt" />
+    <EmbeddedResource Include="HardCodes\PickUpLS_HC.txt" />
   </ItemGroup>
 
 </Project>

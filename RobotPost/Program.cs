@@ -1,7 +1,7 @@
 ﻿using static System.Console;
 
 //if (args.Length == 0) { WriteLine ("no input!"); ReadKey (); return; }
-var rpp = new RobotPost ("C:\\Users\\rajakumarra\\Downloads\\BOX8Bends 1.rbc"); // Gets the rbc file from Flux as input.
+var rpp = new RobotPost ("C:\\Users\\nehrujiaj\\Downloads\\SimpleBend_WithoutError.rbc"); // Gets the rbc file from Flux as input.
 
 Write ("Enter the hard code files directory: ");
 string? hcDir = ReadLine ();
