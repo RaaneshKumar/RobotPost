@@ -167,15 +167,6 @@ public partial class RobotPost {
             }
          }
 
-         //// * - Bend positioning program calls for each bend.
-         //if (hardCode.StartsWith ('*'))
-         //   for (int j = 1; j <= Bends.Count; j++)
-         //      mainLsSW.WriteLine ($"  {(j == 1 ? i++ : i)}:{(j == 1 ? $"  SELECT R[17]={j},CALL BEND{j}Positioning_sub ;" : $"       ={j},CALL BEND{j}Positioning_sub ;")}");
-
-         //// Gripper type hard code.
-         //else if (hardCode.StartsWith ('^'))
-         //   mainLsSW.WriteLine ($"  {i}:  R[18:GripperType]={(mGripperType == Vacuum ? "0" : "1")}");
-
          else mainLsSW.WriteLine ($"  {i}: {hardCode}");
       }
 
@@ -379,11 +370,6 @@ public class Bend {
             else bendLsSW.WriteLine ($"  {i}:   R[17]={Rank + 1} ;");
          }
 
-         //// * - Calls bend sub programs
-         //else if (hardCode.StartsWith ('*')) bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
-         //// R[17] = 2 for first bend, 3 for second bend...
-         //else if (hardCode.StartsWith ('^')) bendLsSW.WriteLine ($"  {i}:   R[17]={Rank + 1} ;");
-
          else bendLsSW.WriteLine ($"  {i}: {hardCode}");
       }
 
@@ -424,18 +410,6 @@ public class Bend {
 
          bendSubSW.WriteLine (hardCode);
       }
-
-      //// Header part of the hard code
-      //for (string? hardCode = bendSubHcSR.ReadLine (); hardCode != null; hardCode = bendSubHcSR.ReadLine ()) {
-      //   if (hardCode.StartsWith ('<')) {
-      //      var gripper = hardCode.Split ('<', '>')[1];
-      //      if (gripper == "Vacuum") isVacuum = true;
-      //      else { isVacuum = false; i = 1; }
-      //      i--; // Since we are skipping that line.
-      //      continue;
-      //   }
-      //   bendSubSW.WriteLine (hardCode);
-      //}
 
       for (int i = 0; i < BendSubPts.Count; i++) {
          var ramPt = BendSubPts[i];
