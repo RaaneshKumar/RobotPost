@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using static EGripper;
@@ -156,14 +157,24 @@ public partial class RobotPost {
          var hardCode = mainLsSR.ReadLine ();
          if (hardCode == null) break;
 
-         // * - Bend positioning program calls for each bend.
-         if (hardCode.StartsWith ('*'))
-            for (int j = 1; j <= Bends.Count; j++)
-               mainLsSW.WriteLine ($"  {(j == 1 ? i++ : i)}:{(j == 1 ? $"  SELECT R[17]={j},CALL BEND{j}Positioning_sub ;" : $"       ={j},CALL BEND{j}Positioning_sub ;")}");
+         // Commands in hard code.
+         if (hardCode.StartsWith ('<')) {
+            var command = hardCode.Split ('<', '>')[1];
+            if (command == "Get GripperType") mainLsSW.WriteLine ($"  {i}:  R[18:GripperType]={(mGripperType == Vacuum ? "0" : "1")}");
+            else { // Bend Positioning calls.
+               for (int j = 1; j <= Bends.Count; j++)
+                  mainLsSW.WriteLine ($"  {(j == 1 ? i++ : i)}:{(j == 1 ? $"  SELECT R[17]={j},CALL BEND{j}Positioning_sub ;" : $"       ={j},CALL BEND{j}Positioning_sub ;")}");
+            }
+         }
 
-         // Gripper type hard code.
-         else if (hardCode.StartsWith ('^'))
-            mainLsSW.WriteLine ($"  {i}:  R[18:GripperType]={(mGripperType == Vacuum ? "0" : "1")}");
+         //// * - Bend positioning program calls for each bend.
+         //if (hardCode.StartsWith ('*'))
+         //   for (int j = 1; j <= Bends.Count; j++)
+         //      mainLsSW.WriteLine ($"  {(j == 1 ? i++ : i)}:{(j == 1 ? $"  SELECT R[17]={j},CALL BEND{j}Positioning_sub ;" : $"       ={j},CALL BEND{j}Positioning_sub ;")}");
+
+         //// Gripper type hard code.
+         //else if (hardCode.StartsWith ('^'))
+         //   mainLsSW.WriteLine ($"  {i}:  R[18:GripperType]={(mGripperType == Vacuum ? "0" : "1")}");
 
          else mainLsSW.WriteLine ($"  {i}: {hardCode}");
       }
@@ -358,10 +369,21 @@ public class Bend {
                }
             }
          }
-         // * - Calls bend sub programs
-         else if (hardCode.StartsWith ('*')) bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
-         // R[17] = 2 for first bend, 3 for second bend...
-         else if (hardCode.StartsWith ('^')) bendLsSW.WriteLine ($"  {i}:   R[17]={Rank + 1} ;");
+
+         // Commands in hard code.
+         if (hardCode.StartsWith ('<')) {
+            var command = hardCode.Split ('<', '>')[1];
+            // Calls bend sub programs.
+            if (command == "Bend Sub calls") bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
+            // R[17] = 2 for first bend, 3 for second bend...
+            else bendLsSW.WriteLine ($"  {i}:   R[17]={Rank + 1} ;");
+         }
+
+         //// * - Calls bend sub programs
+         //else if (hardCode.StartsWith ('*')) bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
+         //// R[17] = 2 for first bend, 3 for second bend...
+         //else if (hardCode.StartsWith ('^')) bendLsSW.WriteLine ($"  {i}:   R[17]={Rank + 1} ;");
+
          else bendLsSW.WriteLine ($"  {i}: {hardCode}");
       }
 
