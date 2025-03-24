@@ -22,9 +22,10 @@
     <EmbeddedResource Include="HardCodes\BendLS_RegripHC.txt" />
     <EmbeddedResource Include="HardCodes\BendSub_HC%28VG%29.txt" />
     <EmbeddedResource Include="HardCodes\BendSub_HC(PG).txt" />
+    <EmbeddedResource Include="HardCodes\DepositLS_HC.txt" />
     <EmbeddedResource Include="HardCodes\Header.txt" />
     <EmbeddedResource Include="HardCodes\MainLS_HC%28VG%29.txt" />
-    <EmbeddedResource Include="HardCodes\MainLS_HC(PG).txt" />
+    <EmbeddedResource Include="HardCodes\PickUpLS_HC.txt" />
   </ItemGroup>
 
 </Project>

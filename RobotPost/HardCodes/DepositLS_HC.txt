@@ -1,0 +1,26 @@
+<Vacuum>
+If (R[18:GripperType]=0);
+(Post-bend Safe)
+(Drop Approach)
+  DO[9:Vacuum_GripON\OFF]=ON ;
+  R[15:SPD_J]=100    ;
+(Retreat)
+(Retreat.2)
+(Drop Retreat3)
+JMP LBL[1];
+ENDIF;
+;
+
+<Pinch>
+If (R[18:GripperType]=1);
+(Post-bend Safe)
+  DO[500:GRIP_OPEN]=ON;
+  DO[499:GRIP_CLOSE]=OFF;
+  WAIT 0.25(sec);
+  //WAIT (DI[13:GRIPPER_OPEN_FB])    ;
+(Drop Approach)
+(Retreat)
+(Retreat.2)
+JMP LBL[1];
+ENDIF;
+LBL[1];
