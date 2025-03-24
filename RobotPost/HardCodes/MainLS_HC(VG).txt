@@ -6,7 +6,7 @@
    R[16:SPD_L]=300    ;
    R[17:BendNumStatus]=1;
    R[10:ProgramState]=1    ;
-   R[18:GripperType]=;
+^
     LBL[1:ProgramStateMachine] ; 
     SELECT R[10:ProgramState]=1,JMP LBL[2] ;
 		   =2,JMP LBL[3] ;
@@ -50,7 +50,7 @@
     ENDIF ;
     DO[55:ECAT_RoboUnsafe]=ON ;
     ;
-  *
+*
             ELSE,JMP LBL[8] ;
     IF (!DI[52:ECAT_LastBendActive]) THEN ;
     JMP LBL[4] ;

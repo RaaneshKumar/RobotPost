@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using static EGripper;
 
 #region class RobotPost ------------------------------------------------------------------------------
 public partial class RobotPost {
@@ -77,7 +78,7 @@ public partial class RobotPost {
    void GenDepositLS (string? hcDir = null) {
       StringBuilder positionsSB = new ();
       StreamReader headerSR, depositLsSR;
-      using StreamWriter depositLsSW = new ($"{mOutDirPath}//Deposit.LS");
+      using StreamWriter depositLsSW = new ($"{mOutDirPath}//Sub_Deposit.LS");
       bool isVacuum = false;
 
       if (hcDir != null) {
@@ -88,6 +89,7 @@ public partial class RobotPost {
          depositLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.DepositLS_HC.txt")!);
       }
 
+      depositLsSW.WriteLine ($"/PROG Sub_Depost\n");
       // Header part of the hard code
       for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) depositLsSW.WriteLine (header);
 
@@ -105,7 +107,7 @@ public partial class RobotPost {
          }
 
          // Skips the other gripper's hardcode part.
-         if (hardCode == "" || (mGripperType == EGripper.Pinch && isVacuum) || (mGripperType == EGripper.Vacuum && !isVacuum)) continue;
+         if (hardCode == "" || (mGripperType == Pinch && isVacuum) || (mGripperType == Vacuum && !isVacuum)) continue;
 
 
          if (hardCode.StartsWith ('(')) {
@@ -139,7 +141,7 @@ public partial class RobotPost {
 
       if (dir != null) {
          headerSR = new ($"{dir}/Header.txt");
-         mainLsSR = new ($"{dir}/MainLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt");
+         mainLsSR = new ($"{dir}/MainLS_HC({(mGripperType == Vacuum ? "VG" : "PG")}).txt");
       } else {
          headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
          mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.MainLS_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
@@ -168,6 +170,10 @@ public partial class RobotPost {
          if (hardCode.StartsWith ('*'))
             for (int j = 1; j <= Bends.Count; j++)
                mainLsSW.WriteLine ($"  {(j == 1 ? i++ : i)}:{(j == 1 ? $"  SELECT R[17]={j},CALL BEND{j}Positioning_sub ;" : $"       ={j},CALL BEND{j}Positioning_sub ;")}");
+
+         // Gripper type hard code.
+         else if (hardCode.StartsWith ('^'))
+            mainLsSW.WriteLine ($"  {i}:  R[18:GripperType]={(mGripperType == Vacuum ? "0" : "1")}");
 
          // () - Deposit points
          else if (hardCode.StartsWith ('(')) {
@@ -221,7 +227,7 @@ public partial class RobotPost {
    void GenPickupLS (string? hcDir = null) {
       StringBuilder positionsSB = new ();
       StreamReader headerSR, pickupLsSR;
-      using StreamWriter pickupLsSW = new ($"{mOutDirPath}//Pickup.LS");
+      using StreamWriter pickupLsSW = new ($"{mOutDirPath}//Sub_Pickup.LS");
       bool isVacuum = false;
 
       if (hcDir != null) {
@@ -232,6 +238,7 @@ public partial class RobotPost {
          pickupLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.PickUpLS_HC.txt")!);
       }
 
+      pickupLsSW.WriteLine ($"/PROG Sub_Pickup\n");
       // Header part of the hard code
       for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) pickupLsSW.WriteLine (header);
 
@@ -249,7 +256,7 @@ public partial class RobotPost {
          }
 
          // Skips the other gripper's hardcode part.
-         if (hardCode == "" || (mGripperType == EGripper.Pinch && isVacuum) || (mGripperType == EGripper.Vacuum && !isVacuum)) continue;
+         if (hardCode == "" || (mGripperType == Pinch && isVacuum) || (mGripperType == Vacuum && !isVacuum)) continue;
 
          if (hardCode.StartsWith ('[')) {
             var pointName = hardCode.Split ('[', ']')[1];
@@ -406,7 +413,7 @@ public class Bend {
       StreamReader bendSubHcSR;
 
       if (hcDir != null) {
-         bendSubHcSR = new ($"{hcDir}/BendSub_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt");
+         bendSubHcSR = new ($"{hcDir}/BendSub_HC({(mGripperType == Vacuum ? "VG" : "PG")}).txt");
       } else {
          bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.BendSub_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
       }
