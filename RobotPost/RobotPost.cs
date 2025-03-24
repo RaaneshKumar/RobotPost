@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using static EGripper;
@@ -75,6 +74,60 @@ public partial class RobotPost {
    // Creates an output directory by getting the directory of the exe file.
    void CreateOutDir () => mOutDirPath = Directory.CreateDirectory (Path.Combine (Path.GetDirectoryName (Assembly.GetExecutingAssembly ().Location)!, mFileName)).FullName;
 
+   // Generate a separate .LS file for centering table.
+   void GenCenteringTableLS (string? hcDir = null) {
+      StringBuilder positionsSB = new ();
+      StreamReader headerSR, centeringSR;
+      using StreamWriter centeringLsSW = new ($"{mOutDirPath}//Sub_CenteringTable.LS");
+      bool isVacuum = false;
+
+      if (hcDir != null) {
+         headerSR = new ($"{hcDir}/Header.txt");
+         centeringSR = new ($"{hcDir}/CenteringTableLS_HC.txt");
+      } else {
+         headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
+         centeringSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.CenteringTableLS_HC.txt")!);
+      }
+
+      centeringLsSW.WriteLine ($"/PROG Sub_CenteringTable\n");
+      // Header part of the hard code
+      for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) centeringLsSW.WriteLine (header);
+
+      // Remaining part of the hard code 
+      for (int i = 1; ; i++) {
+         var hardCode = centeringSR.ReadLine ();
+         if (hardCode == null) break;
+
+         if (hardCode.StartsWith ('<')) {
+            var gripper = hardCode.Split ('<', '>')[1];
+            if (gripper == "Vacuum") isVacuum = true;
+            else { isVacuum = false; i = 1; }
+            i--; // Since we are skipping that line.
+            continue;
+         }
+
+         // Skips the other gripper's hardcode part.
+         if (hardCode == "" || (mGripperType == Pinch && isVacuum) || (mGripperType == Vacuum && !isVacuum)) continue;
+
+         if (hardCode.StartsWith ('[')) {
+            var pointName = hardCode.Split ('[', ']')[1];
+            var point = mPositions.First (x => x.Name == pointName);
+            // Skip if first position else check and and write newly added positions.
+            if (point.PCount != 1) if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (centeringLsSW, i);
+            centeringLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
+            point.IsWritten = true;
+         } else {
+            centeringLsSW.WriteLine ($"  {i}: {hardCode}");
+         }
+      }
+
+      for (int i = 0; i < mPositions.Count; i++) {
+         var position = mPositions[i];
+         WriteToSB (positionsSB, position.Pos, position.PCount, position.Name);
+      }
+      centeringLsSW.WriteLine ("/POS\n" + positionsSB + "\n/END");
+   }
+
    // Generates a separate .LS file for deposit.
    void GenDepositLS (string? hcDir = null) {
       StringBuilder positionsSB = new ();
@@ -113,7 +166,7 @@ public partial class RobotPost {
 
          if (hardCode.StartsWith ('(')) {
             var pointName = hardCode.Split ('(', ')')[1];
-            var point = mPositions.First (x => x.Name == pointName);
+            var point = mPositions.Last (x => x.Name == pointName);
             // First point does not have any previous position.
             if (point.PCount != 1) {
                if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (depositLsSW, i);
@@ -132,17 +185,19 @@ public partial class RobotPost {
       depositLsSW.WriteLine ("/POS\n" + positionsSB + "\n/END");
    }
 
-   void GenMainLS (string? dir = null) {
+   void GenMainLS (string? hcDir = null) {
       // Collect post bend safe of last bend after which deposit points starts.
       var depositIdx = mPositions.IndexOf (mPositions.Where (x => x.Name == "Post-bend Safe").LastOrDefault ()!);
       depositIdx = depositIdx == -1 ? 0 : depositIdx;
       StringBuilder positionsSB = new ();
       using StreamWriter mainLsSW = new ($"{mOutDirPath}//{mFileName}.LS");
       StreamReader headerSR, mainLsSR;
+      bool hasCenteringTable = false;
+      if (mPositions.Any (x => x.Name == "Pick Cen Secure")) hasCenteringTable = true;
 
-      if (dir != null) {
-         headerSR = new ($"{dir}/Header.txt");
-         mainLsSR = new ($"{dir}/MainLS_HC.txt");
+      if (hcDir != null) {
+         headerSR = new ($"{hcDir}/Header.txt");
+         mainLsSR = new ($"{hcDir}/MainLS_HC.txt");
       } else {
          headerSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ("RobotPost.HardCodes.Header.txt")!);
          mainLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.MainLS_HC.txt")!);
@@ -161,12 +216,18 @@ public partial class RobotPost {
          if (hardCode.StartsWith ('<')) {
             var command = hardCode.Split ('<', '>')[1];
             if (command == "Get GripperType") mainLsSW.WriteLine ($"  {i}:  R[18:GripperType]={(mGripperType == Vacuum ? "0" : "1")}");
+            else if (command == "Call Sub_CenteringTable") {
+               if (hasCenteringTable) {
+                  mainLsSW.WriteLine (command);
+                  GenCenteringTableLS (hcDir);
+               } else continue;
+            }
             else { // Bend Positioning calls.
                for (int j = 1; j <= Bends.Count; j++)
                   mainLsSW.WriteLine ($"  {(j == 1 ? i++ : i)}:{(j == 1 ? $"  SELECT R[17]={j},CALL BEND{j}Positioning_sub ;" : $"       ={j},CALL BEND{j}Positioning_sub ;")}");
             }
          }
-
+         
          else mainLsSW.WriteLine ($"  {i}: {hardCode}");
       }
 
@@ -366,6 +427,7 @@ public class Bend {
             var command = hardCode.Split ('<', '>')[1];
             // Calls bend sub programs.
             if (command == "Bend Sub calls") bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
+            else if (command == "P[73]=[OverBending]") bendLsSW.WriteLine ($"  PR[73]=P[{mPositions.Where(x=> x.Name == "Over Bending").FirstOrDefault()!.PCount}:Over Bending]    ;");
             // R[17] = 2 for first bend, 3 for second bend...
             else bendLsSW.WriteLine ($"  {i}:   R[17]={Rank + 1} ;");
          }
@@ -469,6 +531,11 @@ public class Position {
       set => mIsWritten = value;
    }
 
+   public bool IsSkipped {
+      get => mIsSkipped;
+      set => mIsSkipped = value;
+   }
+
    public char Motion => mMotion;
 
    public int PCount => mPCount;
@@ -481,14 +548,19 @@ public class Position {
       get => mPrevPos;
       set => mPrevPos = value;
    }
+
+   public Position? NextPos {
+      get => mNextPos;
+      set => mNextPos = value;
+   }
    #endregion
 
    #region Private fields -----------------------------------------
-   bool mIsWritten;
+   bool mIsWritten, mIsSkipped;
    char mMotion;
    int mPCount;
    string[] mPos;
-   Position? mPrevPos;
+   Position? mPrevPos, mNextPos;
    string mName;
    #endregion
 }

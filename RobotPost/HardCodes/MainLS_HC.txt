@@ -21,7 +21,7 @@
     LBL[2:PartPickup&Initialize] ;
 	If (DI[51:ECAT_FirstBendActive] or (DI[51:ECAT_FirstBendActive] AND DI[52:ECAT_LastBendActive]));
     Call Sub_PickUp;
-	<Call Sub_CenteringTable>
+<Call Sub_CenteringTable>
 	ENDIF;
     IF (DO[51:ECAT_MoveToUDP] OR DI[51:ECAT_FirstBendActive] AND !DI[57:ECAT_UDP_Reached]) THEN ;
     R[10]=2    ;
