@@ -32,7 +32,7 @@
   DO[54:ECAT_EnableRamDown]=OFF ;
   PR[73]=P[13:Over Bending]    ;
 *
-  DO[9]=ON ;
+ DO[9]=ON ;
 [Retract]
 [Swivel 1]
 [Swivel 2]

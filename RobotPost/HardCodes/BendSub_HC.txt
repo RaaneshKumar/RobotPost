@@ -26,6 +26,7 @@ LINE_TRACK;
   CONTINUE_TRACK_AT_PROG_END      : TRUE;
 
 /MN
+<Vacuum>
    1:  !,SYNCRO_BEND ;
    2:  UFRAME_NUM=2 ;
    3:  UTOOL_NUM=2 ;
@@ -60,3 +61,33 @@ LINE_TRACK;
   32:J PR[73] R[15:SPD_J]% CNT100    ;
   33:  R[15:SPD_J]=20    ;
 /POS
+<Pinch>
+  1:  !,SYNCRO_BEND ;
+   2:  UFRAME_NUM=2 ;
+   3:  UTOOL_NUM=2 ;
+   4:  R[15:SPD_J]=100    ;
+   5:  FOR R[33]=1 TO 13 ;
+   6:  PR[R[33]]=P[R[33]]    ;
+   7:  ENDFOR ;
+   8:  DO[500:GRIP_OPEN]=ON;
+   9:  DO[499:GRIP_CLOSE]=OFF;
+  10:  wait .25(sec);
+  11:J P[1] R[15:SPD_J]% CNT100    ;
+  12:  DO[500:GRIP_OPEN]=OFF;
+  13:  DO[499:GRIP_CLOSE]=ON;    
+  14:  wait .1(sec);
+  15:  R[38]=0    ;
+  16:  R[35]=0    ;
+  17:  DO[2:MOVE_TO_LDP]=ON ;
+  18:  SKIP CONDITION R[35]<>R[34]    ;
+  19:  LBL[2] ;
+  20:  IF R[34]>=24,JMP LBL[3] ;
+  21:  LBL[1] ;
+  22:  R[35]=R[34]    ;
+  23:J PR[R[35]] R[15:SPD_J]% CNT100 ACC45 Skip,LBL[2]    ;
+  24:  JMP LBL[2] ;
+  25:  R[38]=R[38]+1    ;
+  26:  LBL[3] ;
+  27:J P[13] R[15:SPD_J]% CNT100    ;
+  28:  R[15:SPD_J]=20    ;
+ /POS

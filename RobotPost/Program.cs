@@ -8,12 +8,12 @@ string? hcDir = ReadLine ();
 bool isValidDir = Directory.Exists (hcDir);
 bool allFilesExist = File.Exists (hcDir + "/BendLS_NoRegripHC.txt")
                   && File.Exists (hcDir + "/BendLS_RegripHC.txt")
-                  && File.Exists (hcDir + "/BendSub_HC(PG).txt")
-                  && File.Exists (hcDir + "/BendSub_HC(VG).txt")
+                  && File.Exists (hcDir + "/CenteringTableLS_HC.txt")
+                  && File.Exists (hcDir + "/BendSub_HC.txt")
                   && File.Exists (hcDir + "/Header.txt")
-                  && File.Exists (hcDir + "/MainLS_HC(VG).txt")
-                  && File.Exists (hcDir + "/DepositLS_HC(VG).txt")
-                  && File.Exists (hcDir + "/PickUpLS_HC(VG).txt");
+                  && File.Exists (hcDir + "/MainLS_HC.txt")
+                  && File.Exists (hcDir + "/DepositLS_HC.txt")
+                  && File.Exists (hcDir + "/PickUpLS_HC.txt");
 
 // Invalid hard code files.
 if (!isValidDir) {
