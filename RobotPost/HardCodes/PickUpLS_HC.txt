@@ -1,6 +1,5 @@
 <Vacuum>
 [Init]
-J P[23] 100% CNT100    ;
 [Approach]
   LBL[50:Stack Search];
   SKIP CONDITION DI[10]=ON;

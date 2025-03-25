@@ -1,8 +1,8 @@
 ﻿using static System.Console;
 
-if (args.Length == 0) { WriteLine ("no input!"); ReadKey (); return; }
-var rpp = new RobotPost (args[0]); // Gets the rbc file from Flux as input.
-
+//if (args.Length == 0) { WriteLine ("no input!"); ReadKey (); return; }
+//var rpp = new RobotPost (args[0]); // Gets the rbc file from Flux as input.
+var rpp = new RobotPost ("C:\\Users\\nehrujiaj\\Downloads\\2Bend250x250 3.rbc");
 Write ("Enter the hard code files directory: ");
 string? hcDir = ReadLine ();
 bool isValidDir = Directory.Exists (hcDir);

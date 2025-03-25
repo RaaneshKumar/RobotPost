@@ -108,12 +108,15 @@ public partial class RobotPost {
 
          // Skips the other gripper's hardcode part.
          if (hardCode == "" || (mGripperType == Pinch && isVacuum) || (mGripperType == Vacuum && !isVacuum)) continue;
-
-         if (hardCode.StartsWith ('[')) {
+         // Skips if the point holder name startswith \[.
+         var skipPoint = hardCode.StartsWith ("\\[");
+         if (skipPoint || hardCode.StartsWith ('[')) {
             var pointName = hardCode.Split ('[', ']')[1];
             var point = mPositions.First (x => x.Name == pointName);
+            if (skipPoint) { point.IsSkipped = true; continue; }
             // Skip if first position else check and and write newly added positions.
-            if (point.PCount != 1) if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (centeringLsSW, i);
+            // if (point.NextPos != null) if (!point.NextPos.IsWritten) point.CheckAndWriteNextPos (centeringLsSW, i);
+            if (point.PCount != 1) if (!point.PrevPos!.IsSkipped && !point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (centeringLsSW, i);
             centeringLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
          } else {
@@ -162,15 +165,15 @@ public partial class RobotPost {
 
          // Skips the other gripper's hardcode part.
          if (hardCode == "" || (mGripperType == Pinch && isVacuum) || (mGripperType == Vacuum && !isVacuum)) continue;
-
-
-         if (hardCode.StartsWith ('(')) {
+         // Skips if the point holder name startswith \(.
+         var skipPoint = hardCode.StartsWith ("\\(");
+         if (skipPoint || hardCode.StartsWith ('(')) {
             var pointName = hardCode.Split ('(', ')')[1];
-            var point = mPositions.Last (x => x.Name == pointName);
+            var point = mPositions.First (x => x.Name == pointName);
             // First point does not have any previous position.
-            if (point.PCount != 1) {
-               if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (depositLsSW, i);
-            }
+            // We only need the last deposit point. So if there is a point and it has the same name it is skipped.
+            if (point.PCount != 1 && point.Name != point.PrevPos!.Name)
+               if (!point.PrevPos!.IsSkipped && !point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (depositLsSW, i);
             depositLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
          } else {
@@ -286,12 +289,14 @@ public partial class RobotPost {
 
          // Skips the other gripper's hardcode part.
          if (hardCode == "" || (mGripperType == Pinch && isVacuum) || (mGripperType == Vacuum && !isVacuum)) continue;
-
-         if (hardCode.StartsWith ('[')) {
+         // Skips if the point holder name startswith \[.
+         var skipPoint = hardCode.StartsWith ("\\[");
+         if (skipPoint || hardCode.StartsWith ('[')) {
             var pointName = hardCode.Split ('[', ']')[1];
             var point = mPositions.First (x => x.Name == pointName);
+            if (skipPoint) { point.IsSkipped = true; continue; }
             // Skip if first position else check and and write newly added positions.
-            if (point.PCount != 1) if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (pickupLsSW, i);
+            if (point.PCount != 1) if (!point.PrevPos!.IsSkipped && !point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (pickupLsSW, i);
             pickupLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
          } else {
@@ -396,14 +401,16 @@ public class Bend {
       for (int i = 1; ; i++) {
          var hardCode = bendLsSR.ReadLine ();
          if (hardCode == null) break;
-         if (hardCode.StartsWith ('[')) {
+         var skipPoint = hardCode.StartsWith ("\\[");
+         if (skipPoint || hardCode.StartsWith ('[')) {
             var pointName = hardCode.Split ('[', ']')[1];
             if (pointName == "") continue;
             if ((Rank == 1 || !mHasRegrip) && (pointName is "Pre-bend Safe" or "Station Front")) continue;
             var point = mPositions.Where (x => x.Name == pointName).FirstOrDefault ();
             if (point is null) continue;
+            if (skipPoint) { point.IsSkipped = true; continue; }
             if (point.PCount != firstPos.PCount) {
-               if (!point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (bendLsSW, i);
+               if (!point.PrevPos!.IsSkipped && !point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (bendLsSW, i);
             }
 
             bendLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
@@ -423,7 +430,7 @@ public class Bend {
          }
 
          // Commands in hard code.
-         if (hardCode.StartsWith ('<')) {
+         else if (hardCode.StartsWith ('<')) {
             var command = hardCode.Split ('<', '>')[1];
             // Calls bend sub programs.
             if (command == "Bend Sub calls") bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
@@ -452,7 +459,7 @@ public class Bend {
       if (hcDir != null) {
          bendSubHcSR = new ($"{hcDir}/BendSub_HC({(mGripperType == Vacuum ? "VG" : "PG")}).txt");
       } else {
-         bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.BendSub_HC({(mGripperType == EGripper.Vacuum ? "VG" : "PG")}).txt")!);
+         bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.BendSub_HC.txt")!);
       }
 
       for (int i = 1; ; i++) {
