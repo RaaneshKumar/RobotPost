@@ -109,7 +109,7 @@ public partial class RobotPost {
          // Skips the other gripper's hardcode part.
          if (hardCode == "" || (mGripperType == Pinch && isVacuum) || (mGripperType == Vacuum && !isVacuum)) continue;
          // Skips if the point holder name startswith \[.
-         var skipPoint = hardCode.StartsWith ("\\[");
+         var skipPoint = hardCode.StartsWith ("/[");
          if (skipPoint || hardCode.StartsWith ('[')) {
             var pointName = hardCode.Split ('[', ']')[1];
             var point = mPositions.First (x => x.Name == pointName);
@@ -146,7 +146,7 @@ public partial class RobotPost {
          depositLsSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.DepositLS_HC.txt")!);
       }
 
-      depositLsSW.WriteLine ($"/PROG Sub_Depost\n");
+      depositLsSW.WriteLine ($"/PROG Sub_Deposit\n");
       // Header part of the hard code
       for (string? header = headerSR.ReadLine (); header != null; header = headerSR.ReadLine ()) depositLsSW.WriteLine (header);
 
@@ -166,7 +166,7 @@ public partial class RobotPost {
          // Skips the other gripper's hardcode part.
          if (hardCode == "" || (mGripperType == Pinch && isVacuum) || (mGripperType == Vacuum && !isVacuum)) continue;
          // Skips if the point holder name startswith \(.
-         var skipPoint = hardCode.StartsWith ("\\(");
+         var skipPoint = hardCode.StartsWith ("/(");
          if (skipPoint || hardCode.StartsWith ('(')) {
             var pointName = hardCode.Split ('(', ')')[1];
             var point = mPositions.First (x => x.Name == pointName);
@@ -290,7 +290,7 @@ public partial class RobotPost {
          // Skips the other gripper's hardcode part.
          if (hardCode == "" || (mGripperType == Pinch && isVacuum) || (mGripperType == Vacuum && !isVacuum)) continue;
          // Skips if the point holder name startswith \[.
-         var skipPoint = hardCode.StartsWith ("\\[");
+         var skipPoint = hardCode.StartsWith ("/[");
          if (skipPoint || hardCode.StartsWith ('[')) {
             var pointName = hardCode.Split ('[', ']')[1];
             var point = mPositions.First (x => x.Name == pointName);
@@ -401,7 +401,7 @@ public class Bend {
       for (int i = 1; ; i++) {
          var hardCode = bendLsSR.ReadLine ();
          if (hardCode == null) break;
-         var skipPoint = hardCode.StartsWith ("\\[");
+         var skipPoint = hardCode.StartsWith ("/[");
          if (skipPoint || hardCode.StartsWith ('[')) {
             var pointName = hardCode.Split ('[', ']')[1];
             if (pointName == "") continue;
@@ -434,7 +434,7 @@ public class Bend {
             var command = hardCode.Split ('<', '>')[1];
             // Calls bend sub programs.
             if (command == "Bend Sub calls") bendLsSW.WriteLine ($"  {i}:  CALL BEND{Rank}SUB    ;");
-            else if (command == "P[73]=[OverBending]") bendLsSW.WriteLine ($"  PR[73]=P[{mPositions.Where(x=> x.Name == "Over Bending").FirstOrDefault()!.PCount}:Over Bending]    ;");
+            else if (command == "P[73]=[OverBending]") bendLsSW.WriteLine ($"  {i}:   PR[73]=P[{mPositions.Where(x=> x.Name == "Over Bending").FirstOrDefault()!.PCount}:Over Bending]    ;");
             // R[17] = 2 for first bend, 3 for second bend...
             else bendLsSW.WriteLine ($"  {i}:   R[17]={Rank + 1} ;");
          }
@@ -457,7 +457,7 @@ public class Bend {
       bool isVacuum = false;
 
       if (hcDir != null) {
-         bendSubHcSR = new ($"{hcDir}/BendSub_HC({(mGripperType == Vacuum ? "VG" : "PG")}).txt");
+         bendSubHcSR = new ($"{hcDir}/BendSub_HC.txt");
       } else {
          bendSubHcSR = new (Assembly.GetExecutingAssembly ().GetManifestResourceStream ($"RobotPost.HardCodes.BendSub_HC.txt")!);
       }

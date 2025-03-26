@@ -1,5 +1,5 @@
  !,Main Program ;
-   LBL[100:Initialize/LoopContinousRun] ;
+   LBL[100:"Initialize"] ;
    UFRAME_NUM=1 ;
    UTOOL_NUM=2 ;
    R[15:SPD_J]=50    ;
@@ -7,7 +7,7 @@
    R[17:BendNumStatus]=1;
    R[10:ProgramState]=1;
 <Get GripperType>
-    LBL[1:ProgramStateMachine] ; 
+    LBL[1:"ProgStateMach"] ; 
     SELECT R[10:ProgramState]=1,JMP LBL[2] ;
 		   =2,JMP LBL[3] ;
            =3,JMP LBL[4] ;
@@ -18,8 +18,8 @@
 		   =8,JMP LBL[9] ;
            ELSE,JMP LBL[1] ;
      ;
-    LBL[2:PartPickup&Initialize] ;
-	If (DI[51:ECAT_FirstBendActive] or (DI[51:ECAT_FirstBendActive] AND DI[52:ECAT_LastBendActive]));
+    LBL[2:"PartPickupInit"] ;
+	If (DI[51:ECAT_FirstBendActive] or (DI[51:ECAT_FirstBendActive] AND DI[52:ECAT_LastBendActive])) Then;
     Call Sub_PickUp;
 <Call Sub_CenteringTable>
 	ENDIF;
