@@ -5,7 +5,7 @@
   SKIP CONDITION DI[10]=ON;
 [Contact]
   DO[9:Vacuum_GripON\OFF]=OFF ;
-[Separate]
+/[Separate]
 [Lift Clear]
 [Aloft]
 ;

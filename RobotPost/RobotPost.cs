@@ -113,10 +113,10 @@ public partial class RobotPost {
          if (skipPoint || hardCode.StartsWith ('[')) {
             var pointName = hardCode.Split ('[', ']')[1];
             var point = mPositions.First (x => x.Name == pointName);
-            if (skipPoint) { point.IsSkipped = true; continue; }
+            if (skipPoint) { point.IsSkipped = true; i--; continue; }
             // Skip if first position else check and and write newly added positions.
             // if (point.NextPos != null) if (!point.NextPos.IsWritten) point.CheckAndWriteNextPos (centeringLsSW, i);
-            if (point.PCount != 1) if (!point.PrevPos!.IsSkipped && !point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (centeringLsSW, i);
+            if (point.PCount != 1) if (!point.PrevPos!.IsSkipped && !point.PrevPos!.IsWritten) { point.CheckAndWritePrevPos (centeringLsSW, ref i); }
             centeringLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
          } else {
@@ -172,8 +172,9 @@ public partial class RobotPost {
             var point = mPositions.First (x => x.Name == pointName);
             // First point does not have any previous position.
             // We only need the last deposit point. So if there is a point and it has the same name it is skipped.
+            if (skipPoint) { point.IsSkipped = true; i--; continue; }
             if (point.PCount != 1 && point.Name != point.PrevPos!.Name)
-               if (!point.PrevPos!.IsSkipped && !point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (depositLsSW, i);
+               if (!point.PrevPos!.IsSkipped && !point.PrevPos!.IsWritten) { point.CheckAndWritePrevPos (depositLsSW, ref i); }
             depositLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
          } else {
@@ -290,13 +291,14 @@ public partial class RobotPost {
          // Skips the other gripper's hardcode part.
          if (hardCode == "" || (mGripperType == Pinch && isVacuum) || (mGripperType == Vacuum && !isVacuum)) continue;
          // Skips if the point holder name startswith \[.
+         
          var skipPoint = hardCode.StartsWith ("/[");
          if (skipPoint || hardCode.StartsWith ('[')) {
             var pointName = hardCode.Split ('[', ']')[1];
             var point = mPositions.First (x => x.Name == pointName);
-            if (skipPoint) { point.IsSkipped = true; continue; }
+            if (skipPoint) { point.IsSkipped = true; i--; continue; }
             // Skip if first position else check and and write newly added positions.
-            if (point.PCount != 1) if (!point.PrevPos!.IsSkipped && !point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (pickupLsSW, i);
+            if (point.PCount != 1) if (!point.PrevPos!.IsSkipped && !point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (pickupLsSW, ref i);
             pickupLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
             point.IsWritten = true;
          } else {
@@ -401,6 +403,7 @@ public class Bend {
       for (int i = 1; ; i++) {
          var hardCode = bendLsSR.ReadLine ();
          if (hardCode == null) break;
+         
          var skipPoint = hardCode.StartsWith ("/[");
          if (skipPoint || hardCode.StartsWith ('[')) {
             var pointName = hardCode.Split ('[', ']')[1];
@@ -408,9 +411,9 @@ public class Bend {
             if ((Rank == 1 || !mHasRegrip) && (pointName is "Pre-bend Safe" or "Station Front")) continue;
             var point = mPositions.Where (x => x.Name == pointName).FirstOrDefault ();
             if (point is null) continue;
-            if (skipPoint) { point.IsSkipped = true; continue; }
+            if (skipPoint) { point.IsSkipped = true; i--; continue; }
             if (point.PCount != firstPos.PCount) {
-               if (!point.PrevPos!.IsSkipped && !point.PrevPos!.IsWritten) point.CheckAndWritePrevPos (bendLsSW, i);
+               if (!point.PrevPos!.IsSkipped && !point.PrevPos!.IsWritten) { point.CheckAndWritePrevPos (bendLsSW, ref i); }
             }
 
             bendLsSW.WriteLine ($"  {i}: {point.Motion} P[{point.PCount}:{point.Name}] {(point.Motion == 'J' ? "R[15:SPD_J]% CNT10    ;" : "R[16:SPD_L]mm/sec FINE    ;")}");
