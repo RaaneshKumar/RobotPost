@@ -1,13 +1,14 @@
 <Vacuum>
-[Init]
-[Approach]
-  LBL[50:Stack Search];
-  SKIP CONDITION DI[10]=ON;
-[Contact]
-  DO[9:Vacuum_GripON\OFF]=OFF ;
-/[Separate]
-[Lift Clear]
-[Aloft]
+[Pick Cen Secure]
+[Pick Cen Approach1]
+[Pick Cen Deposit1]
+  DO[9:Vacuum_GripON\OFF]=ON ;
+[Pick Cen Lift1]
+[Pick Cen Approach2]
+[Pick Cen Contact]
+ DO[9:Vacuum_GripON\OFF]=OFF ;
+[Pick Cen Lift2]
+[Pick Cen Swing]
 ;
 
 <Pinch>
@@ -30,4 +31,4 @@ DO[499:GRIP_CLOSE]=OFF;
 [Safe.2]
   UFRAME_NUM=2 ;
 [Aloft]
-  R[28]=1;
+  R[28]=1;	  

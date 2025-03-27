@@ -30,8 +30,8 @@
    ;
   LBL[6:MOVETOLDP] ;
   DO[54:ECAT_EnableRamDown]=OFF ;
-  PR[73]=P[13:Over Bending]    ;
-*
+<P[73]=[OverBending]>
+<Bend Sub calls>
   DO[52:ECAT_StepChange]=OFF ;
   DO[9:ECAT_ClampingPointBit]=OFF ;
   DO[51:ECAT_MoveToUDP]=ON ;
@@ -43,7 +43,7 @@
   //WAIT (DI[56:ECAT_EoD_Reached])    ;
   DO[50:ECAT_MoveToLDP]=OFF ;
   //UFRAME_NUM=3 ;
-^
+<R[17]=>
   ;
   ;
   ;

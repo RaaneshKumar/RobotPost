@@ -1,13 +1,13 @@
  !,Main Program ;
-   LBL[100:Initialize/LoopContinousRun] ;
+   LBL[100:"Initialize"] ;
    UFRAME_NUM=1 ;
    UTOOL_NUM=2 ;
    R[15:SPD_J]=50    ;
    R[16:SPD_L]=300    ;
    R[17:BendNumStatus]=1;
-   R[10:ProgramState]=1    ;
-   R[18:GripperType]=;
-    LBL[1:ProgramStateMachine] ; 
+   R[10:ProgramState]=1;
+<Get GripperType>
+    LBL[1:"ProgStateMach"] ; 
     SELECT R[10:ProgramState]=1,JMP LBL[2] ;
 		   =2,JMP LBL[3] ;
            =3,JMP LBL[4] ;
@@ -18,9 +18,10 @@
 		   =8,JMP LBL[9] ;
            ELSE,JMP LBL[1] ;
      ;
-    LBL[2:PartPickup&Initialize] ;
-	If (DI[51:ECAT_FirstBendActive] or (DI[51:ECAT_FirstBendActive] AND DI[52:ECAT_LastBendActive]));
+    LBL[2:"PartPickupInit"] ;
+	If (DI[51:ECAT_FirstBendActive] or (DI[51:ECAT_FirstBendActive] AND DI[52:ECAT_LastBendActive])) Then;
     Call Sub_PickUp;
+<Call Sub_CenteringTable>
 	ENDIF;
     IF (DO[51:ECAT_MoveToUDP] OR DI[51:ECAT_FirstBendActive] AND !DI[57:ECAT_UDP_Reached]) THEN ;
     R[10]=2    ;
@@ -50,7 +51,7 @@
     ENDIF ;
     DO[55:ECAT_RoboUnsafe]=ON ;
     ;
-  *
+<Bend positioning calls>
             ELSE,JMP LBL[8] ;
     IF (!DI[52:ECAT_LastBendActive]) THEN ;
     JMP LBL[4] ;
@@ -64,13 +65,4 @@
     LBL[8:TODEPOSIT] ;
     Call Sub_Deposit;
     R[10]=1    ;
-    JMP LBL[9] ;
-    LBL[9:HomeState] ;
-    DO[49:ECAT_ClampingPointBit]=OFF ;
-    DO[50:ECAT_MoveToLDP]=OFF ;
-    DO[51:ECAT_MoveToUDP]=OFF ;
-    DO[52:ECAT_StepChange]=OFF ;
-    DO[54:ECAT_EnableRamDown]=OFF ;
-    DO[53:ECAT_StartProgram]=OFF ;
-(Home)
     JMP LBL[100] ;

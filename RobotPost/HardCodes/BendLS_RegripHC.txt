@@ -30,9 +30,9 @@
    ;
   LBL[6:MOVETOLDP] ;
   DO[54:ECAT_EnableRamDown]=OFF ;
-  PR[73]=P[13:Over Bending]    ;
-*
-  DO[9]=ON ;
+<P[73]=[OverBending]>
+<Bend Sub calls>
+ DO[9]=ON ;
 [Retract]
 [Swivel 1]
 [Swivel 2]
@@ -51,7 +51,7 @@
   //WAIT (DI[56:ECAT_EoD_Reached])    ;
   DO[50:ECAT_MoveToLDP]=OFF ;
   //UFRAME_NUM=3 ;
-^
+<R[17]=>
   ;
   ;
   ;

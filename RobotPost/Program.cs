@@ -1,19 +1,19 @@
 ﻿using static System.Console;
 
 //if (args.Length == 0) { WriteLine ("no input!"); ReadKey (); return; }
-var rpp = new RobotPost ("C:\\Users\\nehrujiaj\\Downloads\\SimpleBend_WithoutError.rbc"); // Gets the rbc file from Flux as input.
-
+//var rpp = new RobotPost (args[0]); // Gets the rbc file from Flux as input.
+var rpp = new RobotPost ("C:\\Users\\nehrujiaj\\Downloads\\2Bend250x250 3.rbc");
 Write ("Enter the hard code files directory: ");
 string? hcDir = ReadLine ();
 bool isValidDir = Directory.Exists (hcDir);
 bool allFilesExist = File.Exists (hcDir + "/BendLS_NoRegripHC.txt")
                   && File.Exists (hcDir + "/BendLS_RegripHC.txt")
-                  && File.Exists (hcDir + "/BendSub_HC(PG).txt")
-                  && File.Exists (hcDir + "/BendSub_HC(VG).txt")
+                  && File.Exists (hcDir + "/CenteringTableLS_HC.txt")
+                  && File.Exists (hcDir + "/BendSub_HC.txt")
                   && File.Exists (hcDir + "/Header.txt")
-                  && File.Exists (hcDir + "/MainLS_HC(VG).txt")
-                  && File.Exists (hcDir + "/DepositLS_HC(VG).txt")
-                  && File.Exists (hcDir + "/PickUpLS_HC(VG).txt");
+                  && File.Exists (hcDir + "/MainLS_HC.txt")
+                  && File.Exists (hcDir + "/DepositLS_HC.txt")
+                  && File.Exists (hcDir + "/PickUpLS_HC.txt");
 
 // Invalid hard code files.
 if (!isValidDir) {
